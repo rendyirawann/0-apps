@@ -1,0 +1,3429 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Transaksi Pekerjaan API",
+        "description": "API untuk aplikasi **Transaksi Pekerjaan** — pencatatan arus kas per kegiatan\nbeserta perhitungan bagi hasil.\n\n### Alur autentikasi\n1. `POST /api/auth/login` dengan email + password → dapat `access_token`.\n2. Kirim `Authorization: Bearer <access_token>` untuk semua endpoint lain.\n3. Opsional: `POST /api/auth/biometric/enable` (butuh password lagi) →\n   dapat `biometric_token` yang disimpan aplikasi di Android Keystore.\n   Login berikutnya cukup sidik jari lewat `POST /api/auth/biometric/login`.\n\n### Aturan angka\nSemua nilai uang adalah **rupiah bulat** (integer, tanpa desimal).\nPersentase dikirim sebagai angka desimal biasa, mis. `1.75` untuk 1,75%.",
+        "contact": {
+            "email": "bayuapriansah10@gmail.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Local"
+        }
+    ],
+    "paths": {
+        "/api/aktivitas/saya": {
+            "get": {
+                "tags": [
+                    "Aktivitas"
+                ],
+                "summary": "Riwayat aktivitas sendiri",
+                "description": "Riwayat aktivitas pengguna yang sedang login. Semua peran boleh mengaksesnya, dan hanya berisi jejaknya sendiri.",
+                "operationId": "aktivitasSaya",
+                "parameters": [
+                    {
+                        "name": "modul",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "auth",
+                                "kegiatan",
+                                "bahan_baku",
+                                "kas",
+                                "lampiran",
+                                "pengguna",
+                                "pengaturan",
+                                "lain"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hanya_gagal",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 30
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/aktivitas": {
+            "get": {
+                "tags": [
+                    "Aktivitas"
+                ],
+                "summary": "Riwayat aktivitas semua akun",
+                "description": "Riwayat aktivitas seluruh pengguna. Khusus superadmin. Bisa disaring per pengguna lewat parameter user_id untuk menelusuri pekerjaan satu petugas.",
+                "operationId": "aktivitasSemua",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "Saring untuk satu pengguna",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "modul",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Cari pada aksi, subjek, atau nama pengguna",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "hanya_gagal",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 30
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "403": {
+                        "description": "Bukan superadmin"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/aktivitas/ringkasan": {
+            "get": {
+                "tags": [
+                    "Aktivitas"
+                ],
+                "summary": "Ringkasan aktivitas",
+                "description": "Angka ringkas untuk layar Log Aktivitas: jumlah aktivitas per modul, per pengguna, dan jumlah yang gagal. Khusus superadmin.",
+                "operationId": "aktivitasRingkasan",
+                "parameters": [
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login dengan email & password",
+                "description": "Menukar email + password dengan access token. Token dipakai di header Authorization: Bearer <token>.",
+                "operationId": "authLogin",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "owner@taksasi.test"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "device_name": {
+                                        "description": "Nama perangkat, tampil di daftar sesi",
+                                        "type": "string",
+                                        "example": "Samsung A54"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Login berhasil."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "access_token": {
+                                                    "type": "string",
+                                                    "example": "3|abcdefghijklmnop"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "example": "Bearer"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "user": {
+                                                    "$ref": "#/components/schemas/User"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Email atau password salah"
+                    },
+                    "403": {
+                        "description": "Akun dinonaktifkan"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    },
+                    "429": {
+                        "description": "Terlalu banyak percobaan login"
+                    }
+                }
+            }
+        },
+        "/api/auth/biometric/enable": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Aktifkan login sidik jari",
+                "description": "Mendaftarkan login sidik jari untuk perangkat ini. Password diminta ulang karena ini aksi sensitif. Respons berisi biometric_token yang HANYA dikembalikan sekali: simpan di Android Keystore / iOS Keychain (flutter_secure_storage), lalu buka dengan sidik jari (local_auth) untuk login berikutnya. Server hanya menyimpan hash SHA-256-nya.",
+                "operationId": "authBiometricEnable",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "password"
+                                ],
+                                "properties": {
+                                    "password": {
+                                        "description": "Password akun saat ini",
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "device_name": {
+                                        "type": "string",
+                                        "example": "Samsung A54"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sidik jari aktif",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "biometric_token": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Password salah"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/biometric/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login dengan sidik jari",
+                "description": "Menukar biometric_token (yang dibuka dengan sidik jari di perangkat) dengan access token baru. Token biometrik tidak berubah, jadi bisa dipakai berulang sampai kedaluwarsa atau password diganti.",
+                "operationId": "authBiometricLogin",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "biometric_token"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "biometric_token": {
+                                        "type": "string"
+                                    },
+                                    "device_name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login berhasil"
+                    },
+                    "401": {
+                        "description": "Token biometrik tidak valid / kedaluwarsa, minta login password lagi"
+                    }
+                }
+            }
+        },
+        "/api/auth/biometric": {
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Matikan login sidik jari",
+                "description": "Mencabut token biometrik. Login sidik jari di perangkat mana pun tidak akan berlaku lagi.",
+                "operationId": "authBiometricDisable",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil dicabut"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Profil pengguna aktif",
+                "description": "Profil pengguna yang sedang login. Dipakai aplikasi saat start-up untuk memastikan token masih valid.",
+                "operationId": "authMe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/profil": {
+            "put": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Ubah profil sendiri",
+                "description": "Melengkapi atau memperbarui data akun sendiri. Peran dan status aktif TIDAK bisa diubah dari sini -- keduanya urusan superadmin, agar petugas tidak bisa menaikkan perannya sendiri.",
+                "operationId": "authProfilUpdate",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Sinta Pratiwi"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "081234567890",
+                                        "nullable": true
+                                    },
+                                    "jabatan": {
+                                        "type": "string",
+                                        "example": "Pelaksana Lapangan",
+                                        "nullable": true
+                                    },
+                                    "alamat": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profil tersimpan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/change-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Ganti password",
+                "description": "Mengganti password. Untuk keamanan, token biometrik otomatis dicabut (perangkat harus mendaftar sidik jari lagi dengan password baru). Kirim logout_other_devices: true untuk sekaligus mencabut token di perangkat lain; token yang sedang dipakai tetap aktif.",
+                "operationId": "authChangePassword",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "current_password",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "password": {
+                                        "description": "Minimal 8 karakter, harus ada huruf & angka",
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "logout_other_devices": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password diganti"
+                    },
+                    "401": {
+                        "description": "Password saat ini salah"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "description": "Mencabut access token yang sedang dipakai. Token biometrik TIDAK dicabut, sehingga login sidik jari tetap bisa dipakai.",
+                "operationId": "authLogout",
+                "responses": {
+                    "200": {
+                        "description": "Logout berhasil"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/{id}/bahan-baku": {
+            "get": {
+                "tags": [
+                    "Bahan Baku"
+                ],
+                "summary": "Rincian bahan baku satu kegiatan",
+                "description": "Rincian bahan baku per item beserta totalnya. Total inilah yang menjadi porsi \"Bahan Baku\" pada Biaya Pelaksanaan Real -- angkanya tidak pernah diketik manual.",
+                "operationId": "bahanBakuIndex",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/BahanBakuItem"
+                                                    }
+                                                },
+                                                "total_bahan_baku": {
+                                                    "type": "integer",
+                                                    "example": 142400000
+                                                },
+                                                "total_upah": {
+                                                    "type": "integer",
+                                                    "example": 67000000
+                                                },
+                                                "total_pelaksanaan": {
+                                                    "type": "integer",
+                                                    "example": 209400000
+                                                },
+                                                "boleh_ubah": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Bahan Baku"
+                ],
+                "summary": "Tambah item bahan baku",
+                "description": "Menambah satu baris bahan baku. Subtotal dihitung server dari qty x harga_satuan, dan total keseluruhan langsung memperbarui Biaya Pelaksanaan Real beserta seluruh angka profit.",
+                "operationId": "bahanBakuStore",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nama",
+                                    "qty",
+                                    "harga_satuan"
+                                ],
+                                "properties": {
+                                    "nama": {
+                                        "type": "string",
+                                        "example": "Besi beton 12mm"
+                                    },
+                                    "satuan": {
+                                        "type": "string",
+                                        "example": "batang"
+                                    },
+                                    "qty": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50
+                                    },
+                                    "harga_satuan": {
+                                        "type": "integer",
+                                        "example": 145000
+                                    },
+                                    "tanggal_beli": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "no_struk": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "toko": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Item ditambahkan"
+                    },
+                    "403": {
+                        "description": "Tidak punya hak"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/bahan-baku/{id}": {
+            "put": {
+                "tags": [
+                    "Bahan Baku"
+                ],
+                "summary": "Ubah item bahan baku",
+                "description": "Mengubah satu baris bahan baku. Subtotal dan seluruh angka taksasi dihitung ulang.",
+                "operationId": "bahanBakuUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Bahan Baku"
+                ],
+                "summary": "Hapus item bahan baku",
+                "description": "Menghapus satu baris bahan baku (soft delete). Total dan angka profit dihitung ulang.",
+                "operationId": "bahanBakuDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/{id}/cash-flows": {
+            "get": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Arus kas satu kegiatan",
+                "description": "Daftar arus kas milik satu kegiatan, terbaru di atas. Bisa difilter per periode, jenis, dan kategori.",
+                "operationId": "cashFlowIndexByKegiatan",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "description": "Tanggal awal (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "description": "Tanggal akhir (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "jenis",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "masuk",
+                                "keluar"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "kategori",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 25
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CashFlow"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Tambah catatan kas",
+                "description": "Mencatat kas masuk / keluar. Field `jenis` boleh dikosongkan karena bisa diturunkan dari kategori. Jika kategori `bahan` atau `upah` dan kegiatan memakai mode otomatis, kolom \"Biaya Pelaksanaan Real\" beserta seluruh angka profit langsung dihitung ulang.",
+                "operationId": "cashFlowStore",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "tanggal",
+                                    "kategori",
+                                    "nominal",
+                                    "uraian"
+                                ],
+                                "properties": {
+                                    "tanggal": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-09-03"
+                                    },
+                                    "kategori": {
+                                        "type": "string",
+                                        "example": "bahan",
+                                        "enum": [
+                                            "termin",
+                                            "modal_investor",
+                                            "lain_masuk",
+                                            "bahan",
+                                            "upah",
+                                            "kewajiban",
+                                            "administrasi",
+                                            "biaya_perusahaan",
+                                            "ppn",
+                                            "pph",
+                                            "bagi_hasil_investor",
+                                            "profit_owner",
+                                            "lain_keluar"
+                                        ]
+                                    },
+                                    "jenis": {
+                                        "description": "Opsional; diturunkan dari kategori bila kosong",
+                                        "type": "string",
+                                        "enum": [
+                                            "masuk",
+                                            "keluar"
+                                        ]
+                                    },
+                                    "nominal": {
+                                        "type": "integer",
+                                        "example": 15000000
+                                    },
+                                    "uraian": {
+                                        "type": "string",
+                                        "example": "Pembelian besi beton 12mm"
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "metode": {
+                                        "type": "string",
+                                        "example": "transfer",
+                                        "enum": [
+                                            "kas",
+                                            "transfer"
+                                        ]
+                                    },
+                                    "no_bukti": {
+                                        "type": "string",
+                                        "example": "INV/2026/0912",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Tercatat"
+                    },
+                    "422": {
+                        "description": "Validasi gagal, mis. kategori tidak cocok dengan jenis"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/cash-flows": {
+            "get": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Arus kas semua kegiatan",
+                "description": "Daftar arus kas lintas kegiatan. Berguna untuk layar \"Semua Transaksi\" dan rekap harian.",
+                "operationId": "cashFlowIndexAll",
+                "parameters": [
+                    {
+                        "name": "kegiatan_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "jenis",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "masuk",
+                                "keluar"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "kategori",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 25
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/cash-flows/{id}": {
+            "get": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Detail catatan kas",
+                "operationId": "cashFlowShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Ubah catatan kas",
+                "description": "Mengubah catatan kas. Angka taksasi kegiatan terkait ikut dihitung ulang.",
+                "operationId": "cashFlowUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "tanggal": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "kategori": {
+                                        "type": "string"
+                                    },
+                                    "nominal": {
+                                        "type": "integer"
+                                    },
+                                    "uraian": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Hapus catatan kas",
+                "description": "Menghapus catatan kas (soft delete). Angka taksasi kegiatan terkait dihitung ulang.",
+                "operationId": "cashFlowDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/{id}/cash-flows/rekap": {
+            "get": {
+                "tags": [
+                    "Cash Flow"
+                ],
+                "summary": "Rekap kas per kategori",
+                "description": "Rekapitulasi kas satu kegiatan: total masuk, total keluar, saldo, dan rincian per kategori. Dipakai untuk grafik di layar detail kegiatan.",
+                "operationId": "cashFlowRekap",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "Referensi"
+                ],
+                "summary": "Cek kesehatan API",
+                "description": "Endpoint publik tanpa autentikasi untuk memastikan API hidup dan jam servernya benar.",
+                "operationId": "health",
+                "responses": {
+                    "200": {
+                        "description": "API aktif",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API aktif."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
+                                                    "example": "ok"
+                                                },
+                                                "app": {
+                                                    "type": "string",
+                                                    "example": "Transaksi Pekerjaan"
+                                                },
+                                                "time": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/kegiatan": {
+            "get": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Daftar kegiatan",
+                "description": "Daftar kegiatan dengan pencarian, filter status, dan pengurutan. Respons memakai bentuk ringkas (tanpa breakdown) supaya hemat kuota di mobile.",
+                "operationId": "kegiatanIndex",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Cari di nama, kode, atau lokasi",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "berjalan",
+                                "selesai",
+                                "batal"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "-created_at",
+                            "enum": [
+                                "-created_at",
+                                "created_at",
+                                "nama",
+                                "-nama",
+                                "-pagu",
+                                "pagu",
+                                "-profit_bersih",
+                                "profit_bersih"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Kegiatan"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Belum login"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Tambah kegiatan",
+                "description": "Membuat kegiatan baru. Persentase boleh dikirim sebagian; yang tidak dikirim diisi dari nilai default (lihat GET /api/referensi/default-rates). Snapshot hasil hitung langsung disimpan.",
+                "operationId": "kegiatanStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nama",
+                                    "pagu"
+                                ],
+                                "properties": {
+                                    "nama": {
+                                        "type": "string",
+                                        "example": "Pembangunan Drainase Blok A"
+                                    },
+                                    "kode": {
+                                        "type": "string",
+                                        "example": "KG-2026-001",
+                                        "nullable": true
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "lokasi": {
+                                        "type": "string",
+                                        "example": "Kec. Cibitung",
+                                        "nullable": true
+                                    },
+                                    "sumber_dana": {
+                                        "type": "string",
+                                        "example": "APBD 2026",
+                                        "nullable": true
+                                    },
+                                    "tanggal_mulai": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "tanggal_selesai": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "example": "draft",
+                                        "enum": [
+                                            "draft",
+                                            "berjalan",
+                                            "selesai",
+                                            "batal"
+                                        ]
+                                    },
+                                    "pagu": {
+                                        "type": "integer",
+                                        "example": 400000000
+                                    },
+                                    "pelaksanaan_real": {
+                                        "description": "Kosongkan agar diambil otomatis dari total kas kategori bahan + upah",
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "rate_ppn": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 11
+                                    },
+                                    "rate_pph": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.75
+                                    },
+                                    "rate_rencana": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 60
+                                    },
+                                    "rate_kewajiban": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 12
+                                    },
+                                    "rate_administrasi": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1
+                                    },
+                                    "rate_perusahaan": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.5
+                                    },
+                                    "rate_investor": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50
+                                    },
+                                    "jml_owner": {
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Kegiatan dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/KegiatanDetail"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal, termasuk bila total persen beban melebihi 100%",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/{id}": {
+            "get": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Detail kegiatan",
+                "description": "Detail satu kegiatan lengkap dengan rate, seluruh breakdown taksasi (siap dirender jadi tabel), dan ringkasan kas.",
+                "operationId": "kegiatanShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/KegiatanDetail"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Ubah kegiatan",
+                "description": "Memperbarui kegiatan. Kirim hanya field yang berubah. Snapshot hasil hitung otomatis diperbarui.",
+                "operationId": "kegiatanUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nama": {
+                                        "type": "string"
+                                    },
+                                    "pagu": {
+                                        "type": "integer"
+                                    },
+                                    "pelaksanaan_real": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "draft",
+                                            "berjalan",
+                                            "selesai",
+                                            "batal"
+                                        ]
+                                    },
+                                    "rate_rencana": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "jml_owner": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Hapus kegiatan",
+                "description": "Menghapus kegiatan (soft delete). Catatan kas di dalamnya ikut tidak tampil, tetapi datanya masih tersimpan untuk audit.",
+                "operationId": "kegiatanDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/preview": {
+            "post": {
+                "tags": [
+                    "Kegiatan"
+                ],
+                "summary": "Pratinjau perhitungan (tanpa simpan)",
+                "description": "Menghitung taksasi TANPA menyimpan. Dipakai form mobile untuk menampilkan angka secara langsung saat pagu / persentase diubah, sehingga rumus di aplikasi dan di server tidak pernah berbeda.",
+                "operationId": "kegiatanPreview",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "pagu"
+                                ],
+                                "properties": {
+                                    "pagu": {
+                                        "type": "integer",
+                                        "example": 400000000
+                                    },
+                                    "pelaksanaan_real": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "rate_ppn": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 11
+                                    },
+                                    "rate_pph": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.75
+                                    },
+                                    "rate_rencana": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 60
+                                    },
+                                    "rate_kewajiban": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 12
+                                    },
+                                    "rate_administrasi": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1
+                                    },
+                                    "rate_perusahaan": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.5
+                                    },
+                                    "rate_investor": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50
+                                    },
+                                    "jml_owner": {
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Hasil hitung",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TaksasiHasil"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/kegiatan/{id}/lampiran": {
+            "get": {
+                "tags": [
+                    "Lampiran"
+                ],
+                "summary": "Daftar lampiran kegiatan",
+                "description": "Daftar bukti yang terlampir pada satu kegiatan -- umumnya foto struk belanja bahan baku.",
+                "operationId": "lampiranIndex",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Lampiran"
+                ],
+                "summary": "Unggah lampiran / foto struk",
+                "description": "Mengunggah bukti belanja. Dikirim sebagai multipart/form-data, sehingga bisa berasal dari pemilih berkas maupun langsung dari kamera perangkat. Berkas yang sama persis (hash identik) ditolak agar tidak terunggah dua kali.",
+                "operationId": "lampiranStore",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "berkas"
+                                ],
+                                "properties": {
+                                    "berkas": {
+                                        "description": "JPG, PNG, WEBP, HEIC, atau PDF. Maksimal 8 MB.",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "konteks": {
+                                        "type": "string",
+                                        "example": "biaya_pelaksanaan",
+                                        "enum": [
+                                            "biaya_pelaksanaan",
+                                            "administrasi",
+                                            "lain"
+                                        ]
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Terunggah"
+                    },
+                    "409": {
+                        "description": "Berkas identik sudah pernah diunggah"
+                    },
+                    "422": {
+                        "description": "Berkas tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/lampiran/{id}/berkas": {
+            "get": {
+                "tags": [
+                    "Lampiran"
+                ],
+                "summary": "Ambil berkas lampiran",
+                "description": "Mengunduh isi berkas lampiran. Berkas disimpan di disk privat, jadi hanya bisa diambil lewat endpoint ini yang memeriksa token -- bukan lewat URL publik yang bisa ditebak.",
+                "operationId": "lampiranBerkas",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Isi berkas",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Berkas tidak ada di penyimpanan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/lampiran/{id}": {
+            "delete": {
+                "tags": [
+                    "Lampiran"
+                ],
+                "summary": "Hapus lampiran",
+                "description": "Menghapus lampiran. Berkas fisiknya baru benar-benar dibuang saat penghapusan permanen, sehingga penghapusan tidak sengaja masih bisa dipulihkan.",
+                "operationId": "lampiranDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/referensi": {
+            "get": {
+                "tags": [
+                    "Referensi"
+                ],
+                "summary": "Semua referensi untuk form",
+                "description": "Semua daftar pilihan yang dibutuhkan form mobile dalam satu panggilan: status kegiatan, jenis kas, kategori kas (beserta jenis induknya), metode pembayaran, dan nilai default persentase. Panggil sekali saat aplikasi start lalu cache di sisi klien.",
+                "operationId": "referensiAll",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "status_kegiatan": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "jenis_kas": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "kategori_kas": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "metode": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "default_rates": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/referensi/default-rates": {
+            "get": {
+                "tags": [
+                    "Referensi"
+                ],
+                "summary": "Default persentase",
+                "description": "Nilai awal persentase untuk form kegiatan baru. Ini HANYA default: rate final disimpan per-kegiatan, jadi mengubah nilai di sini tidak mengubah angka kegiatan yang sudah tersimpan.",
+                "operationId": "referensiDefaultRates",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "rate_ppn": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 11
+                                                },
+                                                "rate_pph": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 1.75
+                                                },
+                                                "rate_rencana": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 60
+                                                },
+                                                "rate_kewajiban": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 12
+                                                },
+                                                "rate_administrasi": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 1
+                                                },
+                                                "rate_perusahaan": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 1.5
+                                                },
+                                                "rate_investor": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 50
+                                                },
+                                                "jml_owner": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Referensi"
+                ],
+                "summary": "Ubah default persentase",
+                "description": "Mengubah nilai default persentase untuk kegiatan yang AKAN dibuat. Kegiatan yang sudah tersimpan tidak terpengaruh, karena rate-nya disimpan per baris.",
+                "operationId": "referensiDefaultRatesUpdate",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "rate_ppn": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 11
+                                    },
+                                    "rate_pph": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.75
+                                    },
+                                    "rate_rencana": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 60
+                                    },
+                                    "rate_kewajiban": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 12
+                                    },
+                                    "rate_administrasi": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1
+                                    },
+                                    "rate_perusahaan": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1.5
+                                    },
+                                    "rate_investor": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50
+                                    },
+                                    "jml_owner": {
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/laporan/ringkasan": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Ringkasan dashboard",
+                "description": "Angka untuk dashboard: jumlah kegiatan per status, akumulasi pagu & profit, posisi kas, tren kas bulanan, dan kegiatan dengan profit tertinggi. Semua bisa dibatasi periode.",
+                "operationId": "laporanRingkasan",
+                "parameters": [
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "bulan_tren",
+                        "in": "query",
+                        "description": "Jumlah bulan pada grafik tren kas",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 6,
+                            "maximum": 24,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/laporan/rekap-kegiatan": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Rekap tabel kegiatan",
+                "description": "Tabel rekap semua kegiatan dengan kolom seperti di Excel \"Taksasi Pekerjaan\", plus baris TOTAL. Dipakai layar Laporan di mobile.",
+                "operationId": "laporanRekapKegiatan",
+                "parameters": [
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "berjalan",
+                                "selesai",
+                                "batal"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/laporan/kegiatan/{id}/pdf": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Cetak PDF taksasi kegiatan",
+                "description": "Mencetak laporan satu kegiatan ke PDF: identitas kegiatan, rincian taksasi baris-per-baris beserta persentasenya, dan daftar arus kas. Respons berupa berkas PDF (application/pdf).",
+                "operationId": "laporanKegiatanPdf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "download",
+                        "in": "query",
+                        "description": "1 = paksa unduh (attachment), 0 = tampilkan inline",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sertakan_kas",
+                        "in": "query",
+                        "description": "1 = sertakan daftar arus kas",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berkas PDF",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Kegiatan tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/laporan/rekap-kegiatan/pdf": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Cetak PDF rekap kegiatan",
+                "description": "Mencetak tabel rekap seluruh kegiatan ke PDF (orientasi landscape) beserta baris TOTAL.",
+                "operationId": "laporanRekapPdf",
+                "parameters": [
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "download",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berkas PDF",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/laporan/arus-kas/pdf": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Cetak PDF buku kas",
+                "description": "Mencetak buku kas ke PDF: daftar transaksi berurutan tanggal dengan kolom debet/kredit dan saldo berjalan. Bisa dibatasi per kegiatan dan per periode.",
+                "operationId": "laporanArusKasPdf",
+                "parameters": [
+                    {
+                        "name": "kegiatan_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "dari",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sampai",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "download",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berkas PDF",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pengguna": {
+            "get": {
+                "tags": [
+                    "Pengguna"
+                ],
+                "summary": "Daftar petugas",
+                "description": "Daftar akun petugas. Hanya superadmin yang boleh mengaksesnya.",
+                "operationId": "penggunaIndex",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Cari nama atau email",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 25
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "403": {
+                        "description": "Bukan superadmin"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Pengguna"
+                ],
+                "summary": "Tambah petugas",
+                "description": "Membuat akun petugas baru. Perannya selalu \"petugas\" -- tidak bisa ditentukan lewat permintaan, sehingga tidak mungkin tercipta superadmin kedua karena salah kirim.",
+                "operationId": "penggunaStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Sinta Pratiwi"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "sinta@taksasi.test"
+                                    },
+                                    "password": {
+                                        "description": "Minimal 8 karakter, ada huruf & angka",
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "is_active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Petugas dibuat"
+                    },
+                    "403": {
+                        "description": "Bukan superadmin"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pengguna/{id}": {
+            "get": {
+                "tags": [
+                    "Pengguna"
+                ],
+                "summary": "Detail petugas",
+                "operationId": "penggunaShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Pengguna"
+                ],
+                "summary": "Ubah petugas",
+                "description": "Mengubah data petugas. Kosongkan password bila tidak ingin menggantinya. Mengubah password di sini juga mencabut token sidik jari petugas tersebut.",
+                "operationId": "penggunaUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "description": "Opsional",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Pengguna"
+                ],
+                "summary": "Nonaktifkan petugas",
+                "description": "Menonaktifkan akun petugas dan mencabut seluruh sesinya. Akunnya tidak dihapus dari database agar jejak siapa yang menginput data lama tetap terbaca.",
+                "operationId": "penggunaDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dinonaktifkan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "User": {
+                "properties": {
+                    "id": {
+                        "description": "Definisi schema bersama untuk Swagger. Kelas ini tidak pernah dieksekusi,\nhanya dibaca oleh swagger-php saat generate dokumentasi.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Bayu Apriansah"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "owner@taksasi.test"
+                    },
+                    "role": {
+                        "description": "superadmin | petugas",
+                        "type": "string",
+                        "example": "petugas"
+                    },
+                    "role_label": {
+                        "type": "string",
+                        "example": "Petugas"
+                    },
+                    "is_superadmin": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "is_petugas": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "jabatan": {
+                        "type": "string",
+                        "example": "Pelaksana Lapangan",
+                        "nullable": true
+                    },
+                    "alamat": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "izin": {
+                        "description": "Ringkasan hak akses; dipakai aplikasi untuk menentukan tombol yang ditampilkan",
+                        "type": "object"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "biometric_enabled": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "biometric_device_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "biometric_expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "password_changed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "last_login_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "TaksasiHasil": {
+                "description": "Hasil perhitungan taksasi. Semua nilai uang adalah rupiah bulat.",
+                "properties": {
+                    "pagu": {
+                        "type": "integer",
+                        "example": 400000000
+                    },
+                    "ppn": {
+                        "type": "integer",
+                        "example": 44000000
+                    },
+                    "pph": {
+                        "type": "integer",
+                        "example": 7000000
+                    },
+                    "netto": {
+                        "description": "pagu - ppn - pph",
+                        "type": "integer",
+                        "example": 349000000
+                    },
+                    "rencana_pelaksanaan": {
+                        "type": "integer",
+                        "example": 209400000
+                    },
+                    "biaya_kewajiban": {
+                        "type": "integer",
+                        "example": 41880000
+                    },
+                    "pelaksanaan_real": {
+                        "type": "integer",
+                        "example": 209400000
+                    },
+                    "biaya_administrasi": {
+                        "type": "integer",
+                        "example": 3490000
+                    },
+                    "biaya_perusahaan": {
+                        "type": "integer",
+                        "example": 5235000
+                    },
+                    "profit_kotor": {
+                        "type": "integer",
+                        "example": 88995000
+                    },
+                    "bagi_hasil_investor": {
+                        "type": "integer",
+                        "example": 44497500
+                    },
+                    "profit_bersih": {
+                        "type": "integer",
+                        "example": 44497500
+                    },
+                    "hasil_bersih_per_owner": {
+                        "description": "Jatah SATU owner",
+                        "type": "integer",
+                        "example": 14832500
+                    },
+                    "sisa_pembulatan": {
+                        "description": "Sisa rupiah yang tidak terbagi rata, masuk kas perusahaan",
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "jml_owner": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "persen_pelaksanaan_real": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 60
+                    },
+                    "persen_profit_kotor": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 25.5
+                    },
+                    "selisih_rencana_real": {
+                        "description": "rencana - real; negatif berarti over budget",
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "total_persen_beban": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 74.5
+                    },
+                    "sisa_persen": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 25.5
+                    },
+                    "is_rugi": {
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "BreakdownRow": {
+                "description": "Satu baris breakdown, siap dirender di tabel/laporan.",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "profit_kotor"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Profit Kotor"
+                    },
+                    "persen": {
+                        "type": "string",
+                        "example": "25,5%",
+                        "nullable": true
+                    },
+                    "nilai": {
+                        "type": "integer",
+                        "example": 88995000
+                    },
+                    "nilai_formatted": {
+                        "type": "string",
+                        "example": "Rp88.995.000"
+                    },
+                    "tipe": {
+                        "description": "dasar | pengurang | beban | rencana | hasil",
+                        "type": "string",
+                        "example": "hasil"
+                    },
+                    "catatan": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Kegiatan": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "kode": {
+                        "type": "string",
+                        "example": "KG-2026-001",
+                        "nullable": true
+                    },
+                    "nama": {
+                        "type": "string",
+                        "example": "A"
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "lokasi": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "sumber_dana": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "tanggal_mulai": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "tanggal_selesai": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "status": {
+                        "description": "draft | berjalan | selesai | batal",
+                        "type": "string",
+                        "example": "berjalan"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "example": "Berjalan"
+                    },
+                    "pagu": {
+                        "type": "integer",
+                        "example": 400000000
+                    },
+                    "pagu_formatted": {
+                        "type": "string",
+                        "example": "Rp400.000.000"
+                    },
+                    "netto": {
+                        "type": "integer",
+                        "example": 349000000
+                    },
+                    "profit_kotor": {
+                        "type": "integer",
+                        "example": 88995000
+                    },
+                    "profit_bersih": {
+                        "type": "integer",
+                        "example": 44497500
+                    },
+                    "hasil_bersih_per_owner": {
+                        "type": "integer",
+                        "example": 14832500
+                    },
+                    "hasil_bersih_per_owner_formatted": {
+                        "type": "string",
+                        "example": "Rp14.832.500"
+                    },
+                    "jml_owner": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "is_rugi": {
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "KegiatanDetail": {
+                "description": "Kegiatan lengkap dengan rate, breakdown taksasi, dan ringkasan kas.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Kegiatan"
+                    },
+                    {
+                        "properties": {
+                            "rates": {
+                                "type": "object"
+                            },
+                            "pelaksanaan_real_input": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "pelaksanaan_real_sumber": {
+                                "description": "manual | kas | proyeksi_rencana",
+                                "type": "string"
+                            },
+                            "pelaksanaan_real_dari_kas": {
+                                "type": "integer"
+                            },
+                            "taksasi": {
+                                "$ref": "#/components/schemas/TaksasiHasil"
+                            },
+                            "breakdown": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/BreakdownRow"
+                                }
+                            },
+                            "ringkasan_kas": {
+                                "type": "object"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "CashFlow": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "kegiatan_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "tanggal": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-09-03"
+                    },
+                    "jenis": {
+                        "description": "masuk | keluar",
+                        "type": "string",
+                        "example": "keluar"
+                    },
+                    "jenis_label": {
+                        "type": "string",
+                        "example": "Kas Keluar"
+                    },
+                    "kategori": {
+                        "type": "string",
+                        "example": "bahan"
+                    },
+                    "kategori_label": {
+                        "type": "string",
+                        "example": "Belanja Bahan"
+                    },
+                    "nominal": {
+                        "type": "integer",
+                        "example": 15000000
+                    },
+                    "nominal_formatted": {
+                        "type": "string",
+                        "example": "Rp15.000.000"
+                    },
+                    "nominal_bertanda": {
+                        "description": "Positif untuk masuk, negatif untuk keluar",
+                        "type": "integer",
+                        "example": -15000000
+                    },
+                    "uraian": {
+                        "type": "string",
+                        "example": "Pembelian besi beton"
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "metode": {
+                        "description": "kas | transfer",
+                        "type": "string",
+                        "example": "transfer"
+                    },
+                    "no_bukti": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "The given data was invalid."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "example": {
+                            "pagu": [
+                                "Pagu wajib diisi."
+                            ]
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "BahanBakuItem": {
+                "description": "Satu baris rincian bahan baku. Subtotal dihitung server dari qty x harga_satuan; klien tidak pernah mengirimkannya.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "kegiatan_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nama": {
+                        "type": "string",
+                        "example": "Besi beton 12mm"
+                    },
+                    "satuan": {
+                        "type": "string",
+                        "example": "batang"
+                    },
+                    "qty": {
+                        "description": "Boleh pecahan, mis. 4.5 m3",
+                        "type": "number",
+                        "format": "float",
+                        "example": 250
+                    },
+                    "qty_formatted": {
+                        "type": "string",
+                        "example": "250"
+                    },
+                    "harga_satuan": {
+                        "type": "integer",
+                        "example": 145000
+                    },
+                    "harga_satuan_formatted": {
+                        "type": "string",
+                        "example": "Rp145.000"
+                    },
+                    "subtotal": {
+                        "type": "integer",
+                        "example": 36250000
+                    },
+                    "subtotal_formatted": {
+                        "type": "string",
+                        "example": "Rp36.250.000"
+                    },
+                    "tanggal_beli": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "no_struk": {
+                        "type": "string",
+                        "example": "INV/BJ/1207",
+                        "nullable": true
+                    },
+                    "toko": {
+                        "type": "string",
+                        "example": "TB Sumber Jaya",
+                        "nullable": true
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "urutan": {
+                        "type": "integer",
+                        "example": 1
+                    }
+                },
+                "type": "object"
+            },
+            "Lampiran": {
+                "description": "Bukti berkas (foto struk belanja / dokumen). Isi berkasnya diambil lewat url_berkas yang memeriksa token, bukan URL publik.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "kegiatan_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "konteks": {
+                        "type": "string",
+                        "example": "biaya_pelaksanaan",
+                        "enum": [
+                            "biaya_pelaksanaan",
+                            "administrasi",
+                            "lain"
+                        ]
+                    },
+                    "nama_asli": {
+                        "type": "string",
+                        "example": "struk-belanja.jpg"
+                    },
+                    "mime": {
+                        "type": "string",
+                        "example": "image/jpeg"
+                    },
+                    "is_gambar": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "ukuran": {
+                        "type": "integer",
+                        "example": 245678
+                    },
+                    "ukuran_label": {
+                        "type": "string",
+                        "example": "240 KB"
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "url_berkas": {
+                        "type": "string",
+                        "example": "/api/lampiran/1/berkas"
+                    }
+                },
+                "type": "object"
+            },
+            "ActivityLog": {
+                "description": "Satu baris jejak aktivitas. Nama dan peran disalin saat kejadian, sehingga jejak lama tetap benar walau akunnya berubah kemudian.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "user_nama": {
+                        "type": "string",
+                        "example": "Sinta Pratiwi",
+                        "nullable": true
+                    },
+                    "user_role": {
+                        "type": "string",
+                        "example": "petugas",
+                        "nullable": true
+                    },
+                    "aksi": {
+                        "type": "string",
+                        "example": "Menambah item bahan baku"
+                    },
+                    "modul": {
+                        "type": "string",
+                        "enum": [
+                            "auth",
+                            "kegiatan",
+                            "bahan_baku",
+                            "kas",
+                            "lampiran",
+                            "pengguna",
+                            "pengaturan",
+                            "lain"
+                        ]
+                    },
+                    "modul_label": {
+                        "type": "string",
+                        "example": "Bahan Baku"
+                    },
+                    "subjek_tipe": {
+                        "type": "string",
+                        "example": "BahanBakuItem",
+                        "nullable": true
+                    },
+                    "subjek_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "subjek_label": {
+                        "type": "string",
+                        "example": "Besi beton 12mm",
+                        "nullable": true
+                    },
+                    "metode": {
+                        "type": "string",
+                        "example": "POST"
+                    },
+                    "path": {
+                        "type": "string",
+                        "example": "/api/kegiatan/1/bahan-baku"
+                    },
+                    "status": {
+                        "type": "integer",
+                        "example": 201
+                    },
+                    "berhasil": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "payload": {
+                        "description": "Isi permintaan tanpa password/token/berkas",
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "ip": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "durasi_ms": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "waktu": {
+                        "type": "string",
+                        "example": "03 Sep 2026, 06:44:09"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Masukkan access_token dari endpoint login (tanpa kata \"Bearer\").",
+                "name": "Authorization",
+                "in": "header",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Login, logout, ganti password, sidik jari"
+        },
+        {
+            "name": "Kegiatan",
+            "description": "CRUD kegiatan & perhitungan taksasi"
+        },
+        {
+            "name": "Cash Flow",
+            "description": "Pencatatan kas masuk / keluar per kegiatan"
+        },
+        {
+            "name": "Laporan",
+            "description": "Ringkasan, rekap, dan cetak PDF"
+        },
+        {
+            "name": "Referensi",
+            "description": "Daftar enum & nilai default untuk form"
+        },
+        {
+            "name": "Aktivitas",
+            "description": "Aktivitas"
+        },
+        {
+            "name": "Bahan Baku",
+            "description": "Bahan Baku"
+        },
+        {
+            "name": "Lampiran",
+            "description": "Lampiran"
+        },
+        {
+            "name": "Pengguna",
+            "description": "Pengguna"
+        }
+    ]
+}

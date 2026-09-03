@@ -1,0 +1,53 @@
+# Laravel Octane (FrankenPHP) untuk Transaksi Pekerjaan API
+#
+# Pasang di: /etc/systemd/system/o-api-octane.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now o-api-octane
+#
+# Octane menahan aplikasi di memori antar-permintaan. Karena itu setelah
+# deploy WAJIB `octane:reload` (bukan sekadar mengganti berkas), kalau tidak
+# worker lama akan terus melayani kode lama.
+
+[Unit]
+Description=Transaksi Pekerjaan API - Laravel Octane
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/o-api/current
+
+# --workers: satu worker menahan satu koneksi PostgreSQL. Dengan default
+#   PostgreSQL max_connections = 100, angka 4-8 aman untuk satu aplikasi.
+#   "auto" memakai jumlah core CPU; di VPS kecil itu justru kebanyakan.
+# --max-requests: worker didaur ulang setiap N permintaan sebagai jaring
+#   pengaman terhadap kebocoran memori pada dependensi pihak ketiga.
+ExecStart=/usr/bin/php artisan octane:start \
+    --server=frankenphp \
+    --host=127.0.0.1 \
+    --port=8000 \
+    --workers=4 \
+    --max-requests=500
+
+ExecReload=/usr/bin/php artisan octane:reload
+
+Restart=always
+RestartSec=3
+
+# Batas berkas terbuka: Octane memegang koneksi lebih lama daripada PHP-FPM.
+LimitNOFILE=65535
+
+StandardOutput=append:/var/log/o-api/octane.log
+StandardError=append:/var/log/o-api/octane.error.log
+
+# Pengerasan dasar. ReadWritePaths dibuka hanya untuk yang benar-benar
+# ditulis aplikasi: storage (termasuk foto struk) dan cache bootstrap.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/o-api/shared/storage /var/www/o-api/current/bootstrap/cache /var/log/o-api
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,44 @@
+# Pekerja antrean untuk Transaksi Pekerjaan API
+#
+# Pasang di: /etc/systemd/system/o-api-queue.service
+#   sudo systemctl enable --now o-api-queue
+#
+# Antrean dipakai untuk pekerjaan yang tidak boleh menahan respons API.
+# Dijalankan sebagai proses TERPISAH dari Octane: kalau digabung, satu
+# pekerjaan berat akan menahan worker yang seharusnya melayani permintaan.
+
+[Unit]
+Description=Transaksi Pekerjaan API - Queue Worker
+After=network.target postgresql.service redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/o-api/current
+
+# --max-time=3600: proses berhenti sendiri setiap jam lalu di-restart systemd.
+#   Ini yang membuat pekerja memakai kode baru setelah deploy tanpa perlu
+#   diingat, dan sekaligus membatasi kebocoran memori.
+# --tries=3 --backoff=10: pekerjaan gagal dicoba ulang, bukan langsung mati.
+ExecStart=/usr/bin/php artisan queue:work redis \
+    --queue=default \
+    --sleep=3 \
+    --tries=3 \
+    --backoff=10 \
+    --max-time=3600
+
+Restart=always
+RestartSec=3
+
+StandardOutput=append:/var/log/o-api/queue.log
+StandardError=append:/var/log/o-api/queue.error.log
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/o-api/shared/storage /var/www/o-api/current/bootstrap/cache /var/log/o-api
+
+[Install]
+WantedBy=multi-user.target

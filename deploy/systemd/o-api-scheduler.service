@@ -1,0 +1,22 @@
+# Penjadwal Laravel (php artisan schedule:work)
+#
+# Alternatif dari entri cron. Dipakai bila Anda lebih suka semua proses
+# aplikasi berada di systemd, bukan terbagi antara systemd dan crontab.
+
+[Unit]
+Description=Transaksi Pekerjaan API - Scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/o-api/current
+ExecStart=/usr/bin/php artisan schedule:work
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/o-api/scheduler.log
+StandardError=append:/var/log/o-api/scheduler.error.log
+
+[Install]
+WantedBy=multi-user.target

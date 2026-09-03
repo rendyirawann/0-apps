@@ -161,7 +161,7 @@ php artisan l5-swagger:generate
 
 | Peran | Nama | Email | Password |
 |---|---|---|---|
-| Superadmin | Bayu Apriansah | `superadmin@taksasi.test` | `password123` |
+| Superadmin | Dormansyah | `superadmin@taksasi.test` | `password123` |
 | Petugas | Sinta Pratiwi | `sinta@taksasi.test` | `password123` |
 | Petugas | Rudi Hartono | `rudi@taksasi.test` | `password123` |
 

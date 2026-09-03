@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
         $super = User::query()->updateOrCreate(
             ['email' => 'superadmin@taksasi.test'],
             [
-                'name' => 'Bayu Apriansah',
+                'name' => 'Dormansyah',
                 'password' => 'password123',
                 'role' => User::SUPERADMIN,
                 'is_active' => true,

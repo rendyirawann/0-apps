@@ -143,7 +143,7 @@ class KegiatanController extends Controller
     #[OA\Get(
         path: '/api/kegiatan/{id}',
         operationId: 'kegiatanShow',
-        description: 'Detail satu kegiatan lengkap dengan rate, seluruh breakdown taksasi (siap dirender jadi tabel), dan ringkasan kas.',
+        description: 'Detail satu kegiatan lengkap dengan rate, seluruh breakdown transaksi (siap dirender jadi tabel), dan ringkasan kas.',
         summary: 'Detail kegiatan',
         security: [['bearerAuth' => []]],
         tags: ['Kegiatan'],
@@ -244,7 +244,7 @@ class KegiatanController extends Controller
     #[OA\Post(
         path: '/api/kegiatan/preview',
         operationId: 'kegiatanPreview',
-        description: 'Menghitung taksasi TANPA menyimpan. Dipakai form mobile untuk menampilkan angka secara langsung saat pagu / persentase diubah, sehingga rumus di aplikasi dan di server tidak pernah berbeda.',
+        description: 'Menghitung transaksi TANPA menyimpan. Dipakai form mobile untuk menampilkan angka secara langsung saat pagu / persentase diubah, sehingga rumus di aplikasi dan di server tidak pernah berbeda.',
         summary: 'Pratinjau perhitungan (tanpa simpan)',
         security: [['bearerAuth' => []]],
         requestBody: new OA\RequestBody(

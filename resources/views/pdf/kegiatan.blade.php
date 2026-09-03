@@ -39,7 +39,7 @@
         @endif
     </table>
 
-    {{-- ---------------- Rincian taksasi ---------------- --}}
+    {{-- ---------------- Rincian transaksi ---------------- --}}
     <table class="data">
         <thead>
             <tr>

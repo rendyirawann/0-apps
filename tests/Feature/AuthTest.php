@@ -373,4 +373,85 @@ class AuthTest extends TestCase
             ->assertJsonPath('data.email', 'superadmin@taksasi.test')
             ->assertJsonPath('data.name', 'Bayu Apriansah');
     }
+
+    #[Test]
+    public function login_baru_mencabut_sesi_perangkat_lain(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'satu@taksasi.test',
+            'password' => 'password123',
+            'role' => User::PETUGAS,
+            'is_active' => true,
+        ]);
+
+        $pertama = $this->postJson('/api/auth/login', [
+            'email' => 'satu@taksasi.test',
+            'password' => 'password123',
+            'device_name' => 'HP lama',
+        ])->assertOk()->json('data.access_token');
+
+        // Token pertama masih berlaku sebelum ada login lain.
+        $this->lupakanGuard();
+        $this->withHeader('Authorization', "Bearer {$pertama}")
+            ->getJson('/api/auth/me')
+            ->assertOk();
+
+        $kedua = $this->postJson('/api/auth/login', [
+            'email' => 'satu@taksasi.test',
+            'password' => 'password123',
+            'device_name' => 'HP baru',
+        ])->assertOk()->json('data.access_token');
+
+        // Perangkat lama terlempar.
+        $this->lupakanGuard();
+        $this->withHeader('Authorization', "Bearer {$pertama}")
+            ->getJson('/api/auth/me')
+            ->assertUnauthorized();
+
+        // Perangkat baru yang berlaku.
+        $this->lupakanGuard();
+        $this->withHeader('Authorization', "Bearer {$kedua}")
+            ->getJson('/api/auth/me')
+            ->assertOk();
+
+        // Hanya satu token yang tersisa di database.
+        $this->assertSame(1, $user->tokens()->count());
+    }
+
+    #[Test]
+    public function login_sidik_jari_juga_menyisakan_satu_sesi(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'sidik@taksasi.test',
+            'password' => 'password123',
+            'role' => User::PETUGAS,
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'sidik@taksasi.test',
+            'password' => 'password123',
+        ])->assertOk();
+
+        $this->lupakanGuard();
+
+        $daftar = $this->actingAs($user)
+            ->postJson('/api/auth/biometric/enable', [
+                'password' => 'password123',
+                'device_name' => 'HP saya',
+            ])->assertOk();
+
+        $tokenBiometrik = $daftar->json('data.biometric_token');
+
+        $this->lupakanGuard();
+
+        $this->postJson('/api/auth/biometric/login', [
+            'email' => 'sidik@taksasi.test',
+            'biometric_token' => $tokenBiometrik,
+            'device_name' => 'HP saya',
+        ])->assertOk();
+
+        // Aturannya sama untuk jalur login apa pun.
+        $this->assertSame(1, $user->tokens()->count());
+    }
 }

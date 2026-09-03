@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Sekarang kegiatan baru benar-benar kosong. Angkanya muncul setelah pengguna
  * mengisi persentasenya sendiri, dan `Kegiatan::rateTerisi()` yang menentukan
- * kapan bagian taksasi layak ditampilkan.
+ * kapan bagian transaksi layak ditampilkan.
  *
  * Baris yang sudah ada TIDAK diubah: default kolom hanya berlaku untuk baris
  * baru, sehingga kegiatan yang persentasenya sudah diisi tetap utuh.

@@ -10,7 +10,6 @@ use App\Models\BahanBakuItem;
 use App\Models\CashFlow;
 use App\Models\Kegiatan;
 use App\Models\MasterData;
-use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -21,7 +20,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->seedMasterData();
         $this->seedUsers();
-        $this->seedSettings();
         $this->seedKegiatan();
     }
 
@@ -92,27 +90,12 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Petugas    : rudi@taksasi.test  / password123');
     }
 
-    /** Default rate awal = angka pada sheet Excel. */
-    private function seedSettings(): void
-    {
-        $rows = [
-            ['rate_ppn', '11', 'percent', 'Default PPN (%)'],
-            ['rate_pph', '1.75', 'percent', 'Default PPh (%)'],
-            ['rate_rencana', '60', 'percent', 'Default Rencana Pelaksanaan (%)'],
-            ['rate_kewajiban', '12', 'percent', 'Default Biaya Kewajiban (%)'],
-            ['rate_administrasi', '1', 'percent', 'Default Administrasi (%)'],
-            ['rate_perusahaan', '1.5', 'percent', 'Default Biaya Perusahaan (%)'],
-            ['rate_investor', '50', 'percent', 'Default Bagi Hasil Investor (%)'],
-            ['jml_owner', '3', 'int', 'Default jumlah owner'],
-        ];
-
-        foreach ($rows as [$key, $value, $type, $label]) {
-            Setting::query()->updateOrCreate(
-                ['key' => $key],
-                ['value' => $value, 'type' => $type, 'label' => $label, 'group' => 'taksasi'],
-            );
-        }
-    }
+    /*
+     * seedSettings() DICABUT.
+     *
+     * Isinya nilai bawaan persentase, dan sekarang tidak ada yang memakainya:
+     * setiap kegiatan menyimpan persentasenya sendiri, diisi penggunanya.
+     */
 
     private function seedKegiatan(): void
     {
@@ -131,7 +114,7 @@ class DatabaseSeeder extends Seeder
             ['kode' => 'KG-2026-001'],
             [
                 'nama' => 'A',
-                'keterangan' => 'Contoh baris pertama pada sheet "Taksasi Pekerjaan".',
+                'keterangan' => 'Contoh baris pertama dari spreadsheet asli.',
                 'lokasi' => 'Kec. Cibitung',
                 'sumber_dana' => 'APBD 2026',
                 'tanggal_mulai' => Carbon::parse('2026-07-01'),

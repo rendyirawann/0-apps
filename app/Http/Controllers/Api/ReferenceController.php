@@ -8,12 +8,8 @@ use App\Enums\JenisKas;
 use App\Enums\KategoriKas;
 use App\Enums\StatusKegiatan;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\SettingUpdateRequest;
-use App\Models\Setting;
-use App\Services\RateDefaults;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use OpenApi\Attributes as OA;
 
 class ReferenceController extends Controller
@@ -54,75 +50,15 @@ class ReferenceController extends Controller
                 ['value' => 'kas', 'label' => 'Kas / Tunai'],
                 ['value' => 'transfer', 'label' => 'Transfer Bank'],
             ],
-            'default_rates' => RateDefaults::all(),
         ], 'Referensi aplikasi.');
     }
 
-    #[OA\Get(
-        path: '/api/referensi/default-rates',
-        operationId: 'referensiDefaultRates',
-        description: 'Nilai awal persentase untuk form kegiatan baru. Ini HANYA default: rate final disimpan per-kegiatan, jadi mengubah nilai di sini tidak mengubah angka kegiatan yang sudah tersimpan.',
-        summary: 'Default persentase',
-        security: [['bearerAuth' => []]],
-        tags: ['Referensi'],
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(properties: [
-                new OA\Property(property: 'data', properties: [
-                    new OA\Property(property: 'rate_ppn', type: 'number', format: 'float', example: 11),
-                    new OA\Property(property: 'rate_pph', type: 'number', format: 'float', example: 1.75),
-                    new OA\Property(property: 'rate_rencana', type: 'number', format: 'float', example: 60),
-                    new OA\Property(property: 'rate_kewajiban', type: 'number', format: 'float', example: 12),
-                    new OA\Property(property: 'rate_administrasi', type: 'number', format: 'float', example: 1),
-                    new OA\Property(property: 'rate_perusahaan', type: 'number', format: 'float', example: 1.5),
-                    new OA\Property(property: 'rate_investor', type: 'number', format: 'float', example: 50),
-                    new OA\Property(property: 'jml_owner', type: 'integer', example: 3),
-                ], type: 'object'),
-            ])),
-        ],
-    )]
-    public function defaultRates(): JsonResponse
-    {
-        return ApiResponse::success(RateDefaults::all(), 'Default persentase.');
-    }
-
-    #[OA\Put(
-        path: '/api/referensi/default-rates',
-        operationId: 'referensiDefaultRatesUpdate',
-        description: 'Mengubah nilai default persentase untuk kegiatan yang AKAN dibuat. Kegiatan yang sudah tersimpan tidak terpengaruh, karena rate-nya disimpan per baris.',
-        summary: 'Ubah default persentase',
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(content: new OA\JsonContent(properties: [
-            new OA\Property(property: 'rate_ppn', type: 'number', format: 'float', example: 11),
-            new OA\Property(property: 'rate_pph', type: 'number', format: 'float', example: 1.75),
-            new OA\Property(property: 'rate_rencana', type: 'number', format: 'float', example: 60),
-            new OA\Property(property: 'rate_kewajiban', type: 'number', format: 'float', example: 12),
-            new OA\Property(property: 'rate_administrasi', type: 'number', format: 'float', example: 1),
-            new OA\Property(property: 'rate_perusahaan', type: 'number', format: 'float', example: 1.5),
-            new OA\Property(property: 'rate_investor', type: 'number', format: 'float', example: 50),
-            new OA\Property(property: 'jml_owner', type: 'integer', example: 3),
-        ])),
-        tags: ['Referensi'],
-        responses: [
-            new OA\Response(response: 200, description: 'Tersimpan'),
-            new OA\Response(response: 422, description: 'Validasi gagal'),
-        ],
-    )]
-    public function updateDefaultRates(SettingUpdateRequest $request): JsonResponse
-    {
-        foreach ($request->validated() as $key => $value) {
-            Setting::query()->updateOrCreate(
-                ['key' => $key],
-                [
-                    'value' => (string) $value,
-                    'type' => $key === 'jml_owner' ? 'int' : 'percent',
-                    'label' => $key,
-                    'group' => 'taksasi',
-                ],
-            );
-        }
-
-        Cache::forget(Setting::CACHE_KEY);
-
-        return ApiResponse::success(RateDefaults::all(), 'Default persentase diperbarui.');
-    }
+    /*
+     * defaultRates() dan updateDefaultRates() DICABUT.
+     *
+     * Persentase kini selalu diisi per kegiatan oleh penggunanya sendiri, jadi
+     * tidak ada lagi yang memakai nilai bawaan -- membiarkan endpointnya hanya
+     * mengundang seseorang menyambungkannya kembali dan membuat kegiatan baru
+     * kembali terisi angka yang belum ditentukan siapa pun.
+     */
 }

@@ -44,7 +44,7 @@ class BahanBakuItem extends Model
      * Subtotal selalu diturunkan dari qty x harga_satuan, dibulatkan ke rupiah
      * mengikuti aturan yang sama dengan seluruh kolom uang lain.
      *
-     * Perubahan apa pun ikut memperbarui snapshot taksasi kegiatan, karena
+     * Perubahan apa pun ikut memperbarui snapshot transaksi kegiatan, karena
      * total item inilah yang menjadi angka "Bahan Baku".
      */
     protected static function booted(): void

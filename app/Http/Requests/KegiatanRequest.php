@@ -51,7 +51,7 @@ class KegiatanRequest extends FormRequest
             // Persentase TIDAK wajib, bahkan saat membuat: kegiatan baru
             // cukup diisi nama dan pagu, lalu dilengkapi di halaman detail.
             // Yang tidak dikirim diisi controller dari default pengaturan,
-            // sehingga taksasi tetap punya angka yang masuk akal sejak awal.
+            // sehingga transaksi tetap punya angka yang masuk akal sejak awal.
             'rate_ppn' => ['nullable', 'numeric', 'between:0,100'],
             'rate_pph' => ['nullable', 'numeric', 'between:0,100'],
             'rate_rencana' => ['nullable', 'numeric', 'between:0,100'],

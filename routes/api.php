@@ -51,8 +51,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // ---- Referensi & default rate ----
     Route::prefix('referensi')->group(function (): void {
         Route::get('/', [ReferenceController::class, 'index'])->name('api.referensi.index');
-        Route::get('/default-rates', [ReferenceController::class, 'defaultRates'])->name('api.referensi.rates');
-        Route::put('/default-rates', [ReferenceController::class, 'updateDefaultRates'])->name('api.referensi.rates.update');
     });
 
     // ---- Kegiatan ----

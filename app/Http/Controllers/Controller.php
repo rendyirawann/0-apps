@@ -37,7 +37,7 @@ use OpenApi\Attributes as OA;
     scheme: 'bearer',
 )]
 #[OA\Tag(name: 'Auth', description: 'Login, logout, ganti password, sidik jari')]
-#[OA\Tag(name: 'Kegiatan', description: 'CRUD kegiatan & perhitungan taksasi')]
+#[OA\Tag(name: 'Kegiatan', description: 'CRUD kegiatan & perhitungan transaksi')]
 #[OA\Tag(name: 'Cash Flow', description: 'Pencatatan kas masuk / keluar per kegiatan')]
 #[OA\Tag(name: 'Laporan', description: 'Ringkasan, rekap, dan cetak PDF')]
 #[OA\Tag(name: 'Referensi', description: 'Daftar enum & nilai default untuk form')]

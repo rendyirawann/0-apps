@@ -82,7 +82,7 @@ class KegiatanResource extends JsonResource
             'pelaksanaan_real_sumber' => $this->sumberPelaksanaanReal(),
 
             // false = kegiatan baru yang persentasenya belum ditentukan.
-            // Aplikasi memakainya untuk menampilkan bagian taksasi sebagai
+            // Aplikasi memakainya untuk menampilkan bagian transaksi sebagai
             // belum diisi alih-alih menampilkan profit yang belum berarti.
             'rate_terisi' => $this->rateTerisi(),
 
@@ -132,12 +132,18 @@ class KegiatanResource extends JsonResource
             $row('ppn', 'PPN', $h->ppn, Rupiah::persen($this->rate_ppn), 'pengurang', 'Dihitung dari Pagu'),
             $row('pph', 'PPh', $h->pph, Rupiah::persen($this->rate_pph), 'pengurang', 'Dihitung dari Pagu'),
             $row('netto', 'Netto (Pagu − PPN − PPh)', $h->netto, null, 'dasar', 'Dasar semua persentase di bawah'),
-            $row('rencana_pelaksanaan', 'Rencana Pelaksanaan (Taksasi Belanja)', $h->rencana_pelaksanaan, Rupiah::persen($this->rate_rencana), 'rencana', 'Plafon belanja, tidak mengurangi profit'),
+            $row('rencana_pelaksanaan', 'Rencana Pelaksanaan (Plafon Belanja)', $h->rencana_pelaksanaan, Rupiah::persen($this->rate_rencana), 'rencana', 'Plafon belanja, tidak mengurangi profit'),
             $row('biaya_kewajiban', 'Biaya Kewajiban', $h->biaya_kewajiban, Rupiah::persen($this->rate_kewajiban), 'beban'),
             $row('pelaksanaan_real', 'Biaya Pelaksanaan Real (Bahan + Upah)', $h->pelaksanaan_real, Rupiah::persen($h->persen_pelaksanaan_real, 2), 'beban', match ($this->sumberPelaksanaanReal()) {
                 'manual' => 'Input manual',
-                'kas' => 'Otomatis dari catatan kas (bahan + upah)',
-                default => 'Belum ada realisasi — memakai proyeksi Rencana',
+                // 'kas' tidak pernah muncul lagi sejak sumbernya diganti
+                // 'realisasi'; arm lama itu membuat keterangan jatuh ke
+                // default dan mencetak "memakai proyeksi Rencana" -- padahal
+                // proyeksinya sudah dicabut dan nilainya kini nol.
+                'realisasi' => $this->realisasiPelaksanaan() > 0
+                    ? 'Otomatis dari rincian bahan baku + upah'
+                    : 'Belum ada belanja yang dicatat',
+                default => 'Belum ada belanja yang dicatat',
             }),
             $row('biaya_administrasi', 'Administrasi', $h->biaya_administrasi, Rupiah::persen($this->rate_administrasi), 'beban'),
             $row('biaya_perusahaan', 'Biaya Perusahaan', $h->biaya_perusahaan, Rupiah::persen($this->rate_perusahaan), 'beban'),

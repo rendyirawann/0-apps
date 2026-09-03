@@ -70,7 +70,8 @@ class ApiErrorEnvelopeTest extends TestCase
             '/api/aktivitas/ringkasan',
             '/api/laporan/ringkasan',
             '/api/referensi',
-            '/api/referensi/default-rates',
+            '/api/master',
+            '/api/master/satuan',
         ];
 
         foreach ($jalur as $path) {

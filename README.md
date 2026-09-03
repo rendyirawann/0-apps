@@ -9,8 +9,8 @@ Flutter (repo terpisah) yang seluruh datanya berasal dari API ini.
 
 - **Laravel 13** · PHP 8.3 · PostgreSQL
 - Autentikasi **Laravel Sanctum** (bearer token) + login sidik jari
-- Dokumentasi **Swagger / OpenAPI** — 36 path, 51 operasi
-- **80 test**, 392 assertion
+- Dokumentasi **Swagger / OpenAPI** — 35 path, 49 operasi
+- **82 test**, 403 assertion
 - Produksi: **Laravel Octane** (FrankenPHP) di belakang nginx, Redis untuk
   cache/session/antrean — lihat **[DEPLOY.md](DEPLOY.md)**
 
@@ -162,6 +162,24 @@ diizinkan server.
 `/api/pengguna/{id}` menolak akun superadmin dengan 403. Satu-satunya cara
 membuat superadmin adalah lewat seeder.
 
+### Satu sesi per akun
+
+Login baru mencabut seluruh token lama, sehingga masuk di perangkat lain
+otomatis mengeluarkan perangkat sebelumnya. Alasannya bukan teknis melainkan
+akuntabilitas: setiap tindakan tercatat atas nama satu akun, dan satu akun yang
+aktif di beberapa perangkat sekaligus membuat jejaknya tidak lagi bisa
+dipertanggungjawabkan ke satu orang.
+
+Aturannya diletakkan di `AuthController::tokenPayload()` — satu-satunya tempat
+token diterbitkan — supaya jalur login apa pun yang ditambahkan nanti ikut
+terkena.
+
+Token sidik jari **tidak** ikut dicabut: ia kredensial milik perangkat, bukan
+sesi. Perangkat yang terlempar tetap bisa masuk kembali dengan sidik jarinya,
+dan saat itu perangkat yang lain yang keluar. Itulah beda dua tombol keluar di
+aplikasi: **Keluar** hanya mencabut sesi, **Keluar dan lupakan perangkat ini**
+juga menghapus token sidik jarinya.
+
 ## Jejak aktivitas
 
 Middleware `CatatAktivitas` dipasang ke seluruh grup `api`, bukan dipanggil
@@ -232,7 +250,7 @@ masih memakai proyeksi rencana.
 ### Perintah berguna
 
 ```bash
-php artisan test                  # 80 test, 392 assertion
+php artisan test                  # 82 test, 403 assertion
 ./vendor/bin/pint                 # format kode
 php artisan route:list --path=api # daftar endpoint
 ```
@@ -263,8 +281,7 @@ pada 422.
 | PUT | `/api/auth/profil` | Lengkapi profil sendiri |
 | POST | `/api/auth/change-password` | Ganti password |
 | POST | `/api/auth/logout` | Cabut access token |
-| GET | `/api/referensi` | Semua enum + default rate |
-| GET/PUT | `/api/referensi/default-rates` | Default persentase |
+| GET | `/api/referensi` | Semua enum aplikasi |
 | GET | `/api/kegiatan` | Daftar (cari, filter, urut, paginasi) |
 | POST | `/api/kegiatan` | Tambah — cukup `nama` + `pagu` |
 | POST | `/api/kegiatan/preview` | **Hitung tanpa simpan** (pratinjau form) |

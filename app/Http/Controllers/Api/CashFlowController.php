@@ -164,7 +164,7 @@ class CashFlowController extends Controller
     #[OA\Put(
         path: '/api/cash-flows/{id}',
         operationId: 'cashFlowUpdate',
-        description: 'Mengubah catatan kas. Angka taksasi kegiatan terkait ikut dihitung ulang.',
+        description: 'Mengubah catatan kas. Angka transaksi kegiatan terkait ikut dihitung ulang.',
         summary: 'Ubah catatan kas',
         security: [['bearerAuth' => []]],
         requestBody: new OA\RequestBody(content: new OA\JsonContent(properties: [
@@ -187,7 +187,7 @@ class CashFlowController extends Controller
     #[OA\Delete(
         path: '/api/cash-flows/{id}',
         operationId: 'cashFlowDestroy',
-        description: 'Menghapus catatan kas (soft delete). Angka taksasi kegiatan terkait dihitung ulang.',
+        description: 'Menghapus catatan kas (soft delete). Angka transaksi kegiatan terkait dihitung ulang.',
         summary: 'Hapus catatan kas',
         security: [['bearerAuth' => []]],
         tags: ['Cash Flow'],

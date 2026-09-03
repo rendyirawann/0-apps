@@ -35,7 +35,7 @@ class CashFlow extends Model
     }
 
     /**
-     * Setiap perubahan kas ikut memperbarui snapshot taksasi kegiatan,
+     * Setiap perubahan kas ikut memperbarui snapshot transaksi kegiatan,
      * karena "Biaya Pelaksanaan Real" bisa berasal dari total kas bahan+upah.
      */
     protected static function booted(): void

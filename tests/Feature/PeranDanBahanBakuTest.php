@@ -219,8 +219,10 @@ class PeranDanBahanBakuTest extends TestCase
             ->deleteJson("/api/kegiatan/{$kegiatan->id}")
             ->assertStatus(403);
 
+        // Endpoint default-rates sudah dicabut. Pengaturan yang kini dijaga
+        // superadmin adalah data master.
         $this->actingAs($petugas)
-            ->putJson('/api/referensi/default-rates', ['rate_ppn' => 12])
+            ->postJson('/api/master/satuan', ['nama' => 'coba'])
             ->assertStatus(403);
 
         $this->actingAs($petugas)->getJson('/api/pengguna')->assertStatus(403);

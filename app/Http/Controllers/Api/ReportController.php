@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
 class ReportController extends Controller
@@ -138,7 +139,7 @@ class ReportController extends Controller
     #[OA\Get(
         path: '/api/laporan/rekap-kegiatan',
         operationId: 'laporanRekapKegiatan',
-        description: 'Tabel rekap semua kegiatan dengan kolom seperti di Excel "Taksasi Pekerjaan", plus baris TOTAL. Dipakai layar Laporan di mobile.',
+        description: 'Tabel rekap semua kegiatan dengan kolom seperti di Excel "Transaksi Pekerjaan", plus baris TOTAL. Dipakai layar Laporan di mobile.',
         summary: 'Rekap tabel kegiatan',
         security: [['bearerAuth' => []]],
         tags: ['Laporan'],
@@ -163,8 +164,8 @@ class ReportController extends Controller
     #[OA\Get(
         path: '/api/laporan/kegiatan/{id}/pdf',
         operationId: 'laporanKegiatanPdf',
-        description: 'Mencetak laporan satu kegiatan ke PDF: identitas kegiatan, rincian taksasi baris-per-baris beserta persentasenya, dan daftar arus kas. Respons berupa berkas PDF (application/pdf).',
-        summary: 'Cetak PDF taksasi kegiatan',
+        description: 'Mencetak laporan satu kegiatan ke PDF: identitas kegiatan, rincian transaksi baris-per-baris beserta persentasenya, dan daftar arus kas. Respons berupa berkas PDF (application/pdf).',
+        summary: 'Cetak PDF transaksi kegiatan',
         security: [['bearerAuth' => []]],
         tags: ['Laporan'],
         parameters: [
@@ -201,9 +202,12 @@ class ReportController extends Controller
             'dicetakOleh' => $request->user()?->name ?? '-',
         ])->setPaper('a4', 'portrait');
 
+        // Nama kegiatan dipakai, bukan kodenya: kolom kode sudah tidak ada
+        // lagi di aplikasi, sehingga sebelumnya berkasnya selalu bernama
+        // angka id yang tidak berarti bagi siapa pun yang mengunduhnya.
         $nama = sprintf(
-            'Taksasi-%s-%s.pdf',
-            str_replace([' ', '/'], '-', $kegiatan->kode ?: (string) $kegiatan->id),
+            'Transaksi-%s-%s.pdf',
+            Str::limit(Str::slug($kegiatan->nama) ?: (string) $kegiatan->id, 40, ''),
             Carbon::now()->format('Ymd-Hi'),
         );
 
@@ -246,7 +250,7 @@ class ReportController extends Controller
             'dicetakOleh' => $request->user()?->name ?? '-',
         ])->setPaper('a4', 'landscape');
 
-        $nama = 'Rekap-Taksasi-'.Carbon::now()->format('Ymd-Hi').'.pdf';
+        $nama = 'Rekap-Transaksi-'.Carbon::now()->format('Ymd-Hi').'.pdf';
 
         return $request->query('download', '1') === '0'
             ? $pdf->stream($nama)

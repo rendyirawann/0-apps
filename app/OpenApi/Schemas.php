@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'name', type: 'string', example: 'Bayu Apriansah'),
-        new OA\Property(property: 'email', type: 'string', format: 'email', example: 'owner@taksasi.test'),
+        new OA\Property(property: 'email', type: 'string', format: 'email', example: 'superadmin@taksasi.test'),
         new OA\Property(property: 'role', description: 'superadmin | petugas', type: 'string', example: 'petugas'),
         new OA\Property(property: 'role_label', type: 'string', example: 'Petugas'),
         new OA\Property(property: 'is_superadmin', type: 'boolean', example: false),
@@ -35,7 +35,7 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'TaksasiHasil',
-    description: 'Hasil perhitungan taksasi. Semua nilai uang adalah rupiah bulat.',
+    description: 'Hasil perhitungan transaksi. Semua nilai uang adalah rupiah bulat.',
     properties: [
         new OA\Property(property: 'pagu', type: 'integer', example: 400000000),
         new OA\Property(property: 'ppn', type: 'integer', example: 44000000),
@@ -102,7 +102,7 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'KegiatanDetail',
-    description: 'Kegiatan lengkap dengan rate, breakdown taksasi, dan ringkasan kas.',
+    description: 'Kegiatan lengkap dengan rate, breakdown transaksi, dan ringkasan kas.',
     allOf: [
         new OA\Schema(ref: '#/components/schemas/Kegiatan'),
         new OA\Schema(properties: [

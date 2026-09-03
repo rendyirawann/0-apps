@@ -98,7 +98,7 @@ class BahanBakuController extends Controller
     #[OA\Put(
         path: '/api/bahan-baku/{id}',
         operationId: 'bahanBakuUpdate',
-        description: 'Mengubah satu baris bahan baku. Subtotal dan seluruh angka taksasi dihitung ulang.',
+        description: 'Mengubah satu baris bahan baku. Subtotal dan seluruh angka transaksi dihitung ulang.',
         summary: 'Ubah item bahan baku',
         security: [['bearerAuth' => []]],
         tags: ['Bahan Baku'],

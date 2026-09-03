@@ -355,6 +355,25 @@ class AuthController extends Controller
         $ttl = config('taksasi.token_ttl_minutes');
         $expiresAt = $ttl !== null && $ttl !== '' ? now()->addMinutes((int) $ttl) : null;
 
+        /*
+         * SATU SESI PER AKUN.
+         *
+         * Seluruh token lama dicabut sebelum yang baru diterbitkan, sehingga
+         * masuk di perangkat lain otomatis mengeluarkan perangkat sebelumnya.
+         * Alasannya bukan teknis melainkan akuntabilitas: setiap tindakan di
+         * sini tercatat atas nama satu akun, dan satu akun yang aktif di
+         * beberapa perangkat sekaligus membuat jejak aktivitasnya tidak lagi
+         * bisa dipertanggungjawabkan ke satu orang.
+         *
+         * Token sidik jari TIDAK ikut dicabut: ia kredensial milik perangkat,
+         * bukan sesi. Perangkat yang terlempar tetap bisa masuk kembali dengan
+         * sidik jarinya -- dan saat itu perangkat yang lain yang keluar.
+         *
+         * Diletakkan di sini, bukan di masing-masing method login, supaya
+         * jalur login apa pun yang ditambahkan nanti ikut terkena aturannya.
+         */
+        $user->tokens()->delete();
+
         $token = $user->createToken($deviceName !== '' ? $deviceName : 'mobile', ['*'], $expiresAt);
 
         $user->forceFill(['last_login_at' => now()])->save();

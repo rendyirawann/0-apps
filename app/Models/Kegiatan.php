@@ -134,7 +134,7 @@ class Kegiatan extends Model
      * Kegiatan baru dibuat hanya dengan nama dan pagu, sehingga seluruh rate
      * masih nol. Dengan rate nol, rumusnya menghasilkan profit = pagu -- angka
      * yang benar secara aritmetika tetapi tidak berarti apa-apa. Penanda ini
-     * dikirim ke aplikasi supaya bagian taksasi ditampilkan sebagai "belum
+     * dikirim ke aplikasi supaya bagian transaksi ditampilkan sebagai "belum
      * diisi", bukan sebagai hasil perhitungan.
      */
     public function rateTerisi(): bool

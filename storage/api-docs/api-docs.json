@@ -787,7 +787,7 @@
                     "Bahan Baku"
                 ],
                 "summary": "Ubah item bahan baku",
-                "description": "Mengubah satu baris bahan baku. Subtotal dan seluruh angka taksasi dihitung ulang.",
+                "description": "Mengubah satu baris bahan baku. Subtotal dan seluruh angka transaksi dihitung ulang.",
                 "operationId": "bahanBakuUpdate",
                 "parameters": [
                     {
@@ -1168,7 +1168,7 @@
                     "Cash Flow"
                 ],
                 "summary": "Ubah catatan kas",
-                "description": "Mengubah catatan kas. Angka taksasi kegiatan terkait ikut dihitung ulang.",
+                "description": "Mengubah catatan kas. Angka transaksi kegiatan terkait ikut dihitung ulang.",
                 "operationId": "cashFlowUpdate",
                 "parameters": [
                     {
@@ -1220,7 +1220,7 @@
                     "Cash Flow"
                 ],
                 "summary": "Hapus catatan kas",
-                "description": "Menghapus catatan kas (soft delete). Angka taksasi kegiatan terkait dihitung ulang.",
+                "description": "Menghapus catatan kas (soft delete). Angka transaksi kegiatan terkait dihitung ulang.",
                 "operationId": "cashFlowDestroy",
                 "parameters": [
                     {
@@ -1603,7 +1603,7 @@
                     "Kegiatan"
                 ],
                 "summary": "Detail kegiatan",
-                "description": "Detail satu kegiatan lengkap dengan rate, seluruh breakdown taksasi (siap dirender jadi tabel), dan ringkasan kas.",
+                "description": "Detail satu kegiatan lengkap dengan rate, seluruh breakdown transaksi (siap dirender jadi tabel), dan ringkasan kas.",
                 "operationId": "kegiatanShow",
                 "parameters": [
                     {
@@ -1744,7 +1744,7 @@
                     "Kegiatan"
                 ],
                 "summary": "Pratinjau perhitungan (tanpa simpan)",
-                "description": "Menghitung taksasi TANPA menyimpan. Dipakai form mobile untuk menampilkan angka secara langsung saat pagu / persentase diubah, sehingga rumus di aplikasi dan di server tidak pernah berbeda.",
+                "description": "Menghitung transaksi TANPA menyimpan. Dipakai form mobile untuk menampilkan angka secara langsung saat pagu / persentase diubah, sehingga rumus di aplikasi dan di server tidak pernah berbeda.",
                 "operationId": "kegiatanPreview",
                 "requestBody": {
                     "required": true,
@@ -2293,150 +2293,6 @@
                 ]
             }
         },
-        "/api/referensi/default-rates": {
-            "get": {
-                "tags": [
-                    "Referensi"
-                ],
-                "summary": "Default persentase",
-                "description": "Nilai awal persentase untuk form kegiatan baru. Ini HANYA default: rate final disimpan per-kegiatan, jadi mengubah nilai di sini tidak mengubah angka kegiatan yang sudah tersimpan.",
-                "operationId": "referensiDefaultRates",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "data": {
-                                            "properties": {
-                                                "rate_ppn": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 11
-                                                },
-                                                "rate_pph": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 1.75
-                                                },
-                                                "rate_rencana": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 60
-                                                },
-                                                "rate_kewajiban": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 12
-                                                },
-                                                "rate_administrasi": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 1
-                                                },
-                                                "rate_perusahaan": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 1.5
-                                                },
-                                                "rate_investor": {
-                                                    "type": "number",
-                                                    "format": "float",
-                                                    "example": 50
-                                                },
-                                                "jml_owner": {
-                                                    "type": "integer",
-                                                    "example": 3
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Referensi"
-                ],
-                "summary": "Ubah default persentase",
-                "description": "Mengubah nilai default persentase untuk kegiatan yang AKAN dibuat. Kegiatan yang sudah tersimpan tidak terpengaruh, karena rate-nya disimpan per baris.",
-                "operationId": "referensiDefaultRatesUpdate",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "rate_ppn": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 11
-                                    },
-                                    "rate_pph": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 1.75
-                                    },
-                                    "rate_rencana": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 60
-                                    },
-                                    "rate_kewajiban": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 12
-                                    },
-                                    "rate_administrasi": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 1
-                                    },
-                                    "rate_perusahaan": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 1.5
-                                    },
-                                    "rate_investor": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 50
-                                    },
-                                    "jml_owner": {
-                                        "type": "integer",
-                                        "example": 3
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Tersimpan"
-                    },
-                    "422": {
-                        "description": "Validasi gagal"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
         "/api/laporan/ringkasan": {
             "get": {
                 "tags": [
@@ -2495,7 +2351,7 @@
                     "Laporan"
                 ],
                 "summary": "Rekap tabel kegiatan",
-                "description": "Tabel rekap semua kegiatan dengan kolom seperti di Excel \"Taksasi Pekerjaan\", plus baris TOTAL. Dipakai layar Laporan di mobile.",
+                "description": "Tabel rekap semua kegiatan dengan kolom seperti di Excel \"Transaksi Pekerjaan\", plus baris TOTAL. Dipakai layar Laporan di mobile.",
                 "operationId": "laporanRekapKegiatan",
                 "parameters": [
                     {
@@ -2548,8 +2404,8 @@
                 "tags": [
                     "Laporan"
                 ],
-                "summary": "Cetak PDF taksasi kegiatan",
-                "description": "Mencetak laporan satu kegiatan ke PDF: identitas kegiatan, rincian taksasi baris-per-baris beserta persentasenya, dan daftar arus kas. Respons berupa berkas PDF (application/pdf).",
+                "summary": "Cetak PDF transaksi kegiatan",
+                "description": "Mencetak laporan satu kegiatan ke PDF: identitas kegiatan, rincian transaksi baris-per-baris beserta persentasenya, dan daftar arus kas. Respons berupa berkas PDF (application/pdf).",
                 "operationId": "laporanKegiatanPdf",
                 "parameters": [
                     {
@@ -2984,7 +2840,7 @@
                     "email": {
                         "type": "string",
                         "format": "email",
-                        "example": "owner@taksasi.test"
+                        "example": "superadmin@taksasi.test"
                     },
                     "role": {
                         "description": "superadmin | petugas",
@@ -3051,7 +2907,7 @@
                 "type": "object"
             },
             "TaksasiHasil": {
-                "description": "Hasil perhitungan taksasi. Semua nilai uang adalah rupiah bulat.",
+                "description": "Hasil perhitungan transaksi. Semua nilai uang adalah rupiah bulat.",
                 "properties": {
                     "pagu": {
                         "type": "integer",
@@ -3270,7 +3126,7 @@
                 "type": "object"
             },
             "KegiatanDetail": {
-                "description": "Kegiatan lengkap dengan rate, breakdown taksasi, dan ringkasan kas.",
+                "description": "Kegiatan lengkap dengan rate, breakdown transaksi, dan ringkasan kas.",
                 "allOf": [
                     {
                         "$ref": "#/components/schemas/Kegiatan"
@@ -3624,7 +3480,7 @@
         },
         {
             "name": "Kegiatan",
-            "description": "CRUD kegiatan & perhitungan taksasi"
+            "description": "CRUD kegiatan & perhitungan transaksi"
         },
         {
             "name": "Cash Flow",

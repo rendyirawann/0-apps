@@ -113,7 +113,39 @@ $PHP artisan queue:restart
 # ------------------------------------------------------------ 9. bersih-bersih
 info "Menyisakan $KEEP_RELEASES rilis terakhir"
 cd "$RELEASES_DIR"
-ls -1dt */ 2>/dev/null | tail -n "+$((KEEP_RELEASES + 1))" | xargs -r rm -rf
+
+# Dua pagar sebelum rm -rf, karena ini satu-satunya perintah menghapus di
+# seluruh proses deploy:
+#
+#   1. Namanya harus persis 14 angka (stempel waktu buatan skrip ini). Apa pun
+#      yang lain -- folder yang tidak sengaja tersimpan di sini, cadangan
+#      manual, tautan -- dilewati, bukan dihapus.
+#   2. Rilis yang sedang ditunjuk `current` tidak pernah ikut terhapus,
+#      seandainya urutan tanggalnya tidak seperti dugaan.
+AKTIF="$(readlink -f "$CURRENT_LINK" 2>/dev/null || echo '')"
+
+ls -1dt */ 2>/dev/null | tail -n "+$((KEEP_RELEASES + 1))" | while read -r LAMA; do
+    NAMA="${LAMA%/}"
+
+    case "$NAMA" in
+        [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+        *)
+            printf '    dilewati (bukan folder rilis): %s
+' "$NAMA"
+            continue
+            ;;
+    esac
+
+    if [ -n "$AKTIF" ] && [ "$(readlink -f "$NAMA")" = "$AKTIF" ]; then
+        printf '    dilewati (sedang aktif): %s
+' "$NAMA"
+        continue
+    fi
+
+    rm -rf -- "$RELEASES_DIR/$NAMA"
+    printf '    dihapus: %s
+' "$NAMA"
+done
 
 # ----------------------------------------------------------------- 10. periksa
 info "Memeriksa kesehatan"

@@ -16,9 +16,27 @@ APP_DIR="${APP_DIR:-/var/www/o-api}"
 DB_NAME="${DB_NAME:-o_taksasi}"
 DB_USER="${DB_USER:-o_taksasi}"
 
+# Kosong = pasang di domain sendiri dengan TLS (bawaan).
+# Terisi = pasang di bawah subfolder pada sebuah IP, tanpa TLS. Contoh:
+#          SUBFOLDER=transaksi bash setup-server.sh
+SUBFOLDER="${SUBFOLDER:-}"
+IP="${IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+
 info() { printf '\n\033[1;34m==>\033[0m %s\n' "$1"; }
 
 [ "$(id -u)" -eq 0 ] || { echo "Jalankan sebagai root."; exit 1; }
+
+if [ -n "$SUBFOLDER" ]; then
+    # Dibatasi huruf/angka/strip: nama subfolder ikut masuk ke sed, ke pola
+    # location nginx, dan ke APP_URL. Karakter di luar itu memecah ketiganya.
+    case "$SUBFOLDER" in
+        *[!a-zA-Z0-9_-]*)
+            echo "SUBFOLDER hanya boleh huruf, angka, - dan _. Diberikan: $SUBFOLDER"
+            exit 1
+            ;;
+    esac
+    [ -n "$IP" ] || { echo "IP server tidak terdeteksi. Ulangi dengan IP=<alamat>."; exit 1; }
+fi
 
 # ------------------------------------------------------------------- 1. paket
 info "Memasang paket dasar"
@@ -174,20 +192,63 @@ cp "$APP_DIR"/repo/deploy/systemd/*.service /etc/systemd/system/
 systemctl daemon-reload
 
 # ------------------------------------------------------------------- 8. nginx
-info "Memasang konfigurasi nginx"
-cp "$APP_DIR/repo/deploy/nginx/${DOMAIN}.conf" /etc/nginx/sites-available/
-ln -sfn "/etc/nginx/sites-available/${DOMAIN}.conf" /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+if [ -n "$SUBFOLDER" ]; then
+    info "Menyiapkan konfigurasi nginx untuk http://$IP/$SUBFOLDER"
 
-info "Menerbitkan sertifikat TLS"
-apt-get install -y certbot python3-certbot-nginx
-# --nginx mengubah konfigurasi sendiri; di sini konfigurasinya sudah menunjuk
-# ke jalur sertifikat, jadi dipakai mode webroot agar tidak saling menimpa.
-certbot certonly --webroot -w /var/www/certbot \
-    -d "$DOMAIN" -d "www.$DOMAIN" \
-    --email "$EMAIL" --agree-tos --non-interactive
+    NGINX_CONF=/etc/nginx/sites-available/o-api-subfolder.conf
 
-nginx -t && systemctl reload nginx
+    # Nama subfolder pada berkas contoh diganti seluruhnya. Yang huruf kecil
+    # di sana hanya muncul sebagai jalur atau di komentar, jadi aman.
+    sed "s#transaksi#${SUBFOLDER}#g; s#203[.]0[.]113[.]10#${IP}#g" \
+        "$APP_DIR/repo/deploy/nginx/ip-subfolder.conf" > "$NGINX_CONF"
+
+    # SENGAJA tidak diaktifkan otomatis, dan sites-enabled/default TIDAK
+    # dihapus.
+    #
+    # Di mode subfolder, IP ini biasanya sudah melayani sesuatu. Blok server
+    # pada berkas contoh memakai `default_server`; mengaktifkannya begitu saja
+    # akan merebut IP dari situs yang sudah berjalan. Itu keputusan operator,
+    # bukan keputusan skrip ini.
+    cat <<PESAN_NGINX
+
+  Konfigurasi nginx ditulis ke $NGINX_CONF tetapi BELUM diaktifkan.
+  Pilih salah satu:
+
+  a. IP ini belum dipakai situs lain
+       ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+       rm -f /etc/nginx/sites-enabled/default
+       nginx -t && systemctl reload nginx
+
+  b. Sudah ada situs lain di IP ini
+       Salin bagian "POTONGAN UNTUK SERVER YANG SUDAH ADA" dari
+       $NGINX_CONF ke dalam blok server milik situs tersebut,
+       lalu: nginx -t && systemctl reload nginx
+
+PESAN_NGINX
+else
+    info "Memasang konfigurasi nginx"
+    cp "$APP_DIR/repo/deploy/nginx/${DOMAIN}.conf" /etc/nginx/sites-available/
+    ln -sfn "/etc/nginx/sites-available/${DOMAIN}.conf" /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+
+    info "Menerbitkan sertifikat TLS"
+    apt-get install -y certbot python3-certbot-nginx
+    # --nginx mengubah konfigurasi sendiri; di sini konfigurasinya sudah
+    # menunjuk ke jalur sertifikat, jadi dipakai mode webroot agar tidak
+    # saling menimpa.
+    certbot certonly --webroot -w /var/www/certbot \
+        -d "$DOMAIN" -d "www.$DOMAIN" \
+        --email "$EMAIL" --agree-tos --non-interactive
+
+    nginx -t && systemctl reload nginx
+fi
+
+# Alamat dasar aplikasi; dipakai pada pesan penutup dan di .env.
+if [ -n "$SUBFOLDER" ]; then
+    ALAMAT="http://$IP/$SUBFOLDER"
+else
+    ALAMAT="https://$DOMAIN"
+fi
 
 cat <<PESAN
 
@@ -196,14 +257,14 @@ Selesai. Langkah berikutnya, berurutan:
   1. Isi $APP_DIR/shared/.env
        APP_ENV=production
        APP_DEBUG=false
-       APP_URL=https://$DOMAIN
+       APP_URL=$ALAMAT
        DB_PORT=5432                 <- di server, bukan 5433
        DB_USERNAME=$DB_USER
        DB_PASSWORD=<sandi di atas>
        CACHE_STORE=redis
        SESSION_DRIVER=redis
        QUEUE_CONNECTION=redis
-       L5_SWAGGER_CONST_HOST=https://$DOMAIN
+       L5_SWAGGER_CONST_HOST=$ALAMAT
 
   2. cd $APP_DIR/repo && composer install --no-dev
      php artisan key:generate --force   (menulis ke shared/.env)

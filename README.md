@@ -243,17 +243,36 @@ php artisan l5-swagger:generate
 | Petugas | Sinta Pratiwi | `sinta@taksasi.test` | `password123` |
 | Petugas | Rudi Hartono | `rudi@taksasi.test` | `password123` |
 
-Seeder juga membuat 3 kegiatan contoh: satu persis contoh spreadsheet, satu
-dengan rate berbeda (PPh 2,65%, 2 owner, real manual), dan satu draft yang
-masih memakai proyeksi rencana.
+`db:seed` juga membuat 3 kegiatan contoh. Seedernya dipecah supaya bisa
+dijalankan sendiri:
+
+```bash
+php artisan db:seed --class=MasterDataSeeder      # satuan, toko, sumber dana
+php artisan db:seed --class=UserSeeder            # akun
+php artisan db:seed --class=KegiatanContohSeeder  # 3 kegiatan contoh
+```
+
+Di server, jalankan dua yang pertama saja — data contoh hanya mengotori
+laporan di sana.
 
 ### Perintah berguna
 
 ```bash
-php artisan test                  # 82 test, 403 assertion
+php artisan test                  # 91 test, 428 assertion
 ./vendor/bin/pint                 # format kode
 php artisan route:list --path=api # daftar endpoint
+
+# Mengosongkan seluruh data kegiatan; akun & data master dipertahankan.
+# Berkas fisik lampiran ikut dihapus, dan urutan id kembali dari 1.
+php artisan kegiatan:bersihkan
+php artisan kegiatan:bersihkan --aktivitas   # jejak kegiatan ikut dihapus
+php artisan kegiatan:bersihkan --contoh      # lalu isi ulang 3 contoh
 ```
+
+> Pembersihan data berupa perintah artisan, **bukan migrasi**. Migrasi
+> dijalankan otomatis setiap deploy, jadi migrasi yang menghapus data akan
+> mengosongkan kegiatan berulang kali — kehilangan yang tidak bisa dipulihkan.
+> Cara mengosongkannya di server ada di **[DEPLOY.md](DEPLOY.md)**.
 
 ---
 

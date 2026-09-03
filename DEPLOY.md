@@ -251,6 +251,98 @@ penuh.
 
 ---
 
+## Mengosongkan data kegiatan di server
+
+Semua perintah dijalankan dari folder rilis aktif, sebagai `www-data`:
+
+```bash
+cd /var/www/o-api/current
+```
+
+### 1. Cadangkan dulu — ini tidak bisa dibatalkan
+
+```bash
+sudo -u postgres pg_dump o_taksasi | gzip > ~/o_taksasi-$(date +%Y%m%d-%H%M).sql.gz
+tar czf ~/lampiran-$(date +%Y%m%d-%H%M).tar.gz -C /var/www/o-api/shared/storage/app lampiran
+```
+
+Cadangkan **keduanya**. Database menyimpan barisnya, disk menyimpan foto
+struknya; memulihkan salah satu saja menghasilkan lampiran yang barisnya ada
+tetapi berkasnya hilang, atau sebaliknya.
+
+### 2. Bersihkan
+
+```bash
+sudo -u www-data php artisan kegiatan:bersihkan
+```
+
+Perintahnya menampilkan apa yang akan dihapus dan apa yang dipertahankan,
+lalu meminta konfirmasi — di `APP_ENV=production` konfirmasinya selalu
+ditanyakan. Tambahkan `--force` hanya bila dipanggil dari skrip.
+
+| Dihapus | Dipertahankan |
+|---|---|
+| Kegiatan | Akun pengguna |
+| Arus kas | Data master (satuan, toko, sumber dana) |
+| Rincian bahan baku | Jejak aktivitas |
+| Lampiran + **berkas fisiknya** | Pengaturan `.env` |
+
+Pilihan tambahan:
+
+```bash
+# Ikut menghapus jejak aktivitas modul kegiatan/kas/bahan baku/lampiran.
+# Jejak login tetap ada.
+sudo -u www-data php artisan kegiatan:bersihkan --aktivitas
+
+# Bersihkan lalu isi ulang 3 kegiatan contoh (untuk demo, bukan produksi).
+sudo -u www-data php artisan kegiatan:bersihkan --contoh
+```
+
+Urutan id kegiatan kembali dari 1, jadi kegiatan pertama setelah dibersihkan
+tidak bernomor lanjutan.
+
+### Mulai benar-benar dari nol
+
+Kalau akun pun ingin dibuat ulang:
+
+```bash
+sudo -u www-data php artisan migrate:fresh --force
+sudo -u www-data php artisan db:seed --force
+sudo -u www-data php artisan octane:reload
+```
+
+`migrate:fresh` menghapus **seluruh tabel**, termasuk akun — jadi password
+superadmin kembali ke `password123` dan wajib segera diganti. Berkas lampiran
+di `shared/storage` **tidak** ikut terhapus oleh perintah ini; bersihkan
+manual bila memang dikehendaki:
+
+```bash
+sudo -u www-data find /var/www/o-api/shared/storage/app/lampiran -mindepth 1 -delete
+```
+
+`octane:reload` di akhir bukan formalitas: worker menahan aplikasi di memori,
+termasuk cache pengaturan, sehingga tanpa reload sebagian data lama masih
+terbaca sampai worker berganti sendiri.
+
+### Isi awal tanpa data contoh
+
+Untuk server yang datanya akan diisi sendiri dari aplikasi:
+
+```bash
+sudo -u www-data php artisan db:seed --class=MasterDataSeeder --force
+sudo -u www-data php artisan db:seed --class=UserSeeder --force
+```
+
+`DatabaseSeeder` memanggil `KegiatanContohSeeder`, jadi `db:seed` tanpa
+`--class` selalu ikut membawa 3 kegiatan contoh — berguna untuk demo, hanya
+mengotori laporan di produksi.
+
+> **Kenapa bukan migrasi?** Migrasi dijalankan otomatis oleh `deploy.sh` pada
+> setiap rilis. Migrasi yang menghapus data akan mengosongkan kegiatan
+> berulang kali setiap deploy — kehilangan data yang tidak bisa dipulihkan.
+> Pembersihan data harus selalu berupa tindakan yang diminta secara sadar,
+> karena itu bentuknya perintah artisan.
+
 ## Memeriksa setelah deploy
 
 ```bash

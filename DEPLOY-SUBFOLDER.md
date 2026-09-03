@@ -323,7 +323,7 @@ Swagger tetap terbuka, hanya isinya kosong.
 ## 5. Aplikasi Flutter
 
 APK-nya punya kolom **Alamat API** yang bisa diubah tanpa membangun ulang
-(Profil ▸ Alamat API, hanya untuk superadmin). Isi dengan:
+(Pengaturan ▸ Alamat API, hanya untuk superadmin). Isi dengan:
 
 ```
 http://203.0.113.10/transaksi

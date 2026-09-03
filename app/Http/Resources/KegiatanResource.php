@@ -81,6 +81,11 @@ class KegiatanResource extends JsonResource
             'pelaksanaan_real_input' => $this->pelaksanaan_real !== null ? (int) $this->pelaksanaan_real : null,
             'pelaksanaan_real_sumber' => $this->sumberPelaksanaanReal(),
 
+            // false = kegiatan baru yang persentasenya belum ditentukan.
+            // Aplikasi memakainya untuk menampilkan bagian taksasi sebagai
+            // belum diisi alih-alih menampilkan profit yang belum berarti.
+            'rate_terisi' => $this->rateTerisi(),
+
             // Dua penyusun Biaya Pelaksanaan Real, dipisah agar layar detail
             // bisa menampilkan asal angkanya tanpa memanggil endpoint lain.
             'total_bahan_baku' => $this->totalBahanBaku(),

@@ -9,8 +9,8 @@ Flutter (repo terpisah) yang seluruh datanya berasal dari API ini.
 
 - **Laravel 13** · PHP 8.3 · PostgreSQL
 - Autentikasi **Laravel Sanctum** (bearer token) + login sidik jari
-- Dokumentasi **Swagger / OpenAPI** — 33 path, 46 operasi
-- **65 test**, 331 assertion
+- Dokumentasi **Swagger / OpenAPI** — 36 path, 51 operasi
+- **80 test**, 392 assertion
 - Produksi: **Laravel Octane** (FrankenPHP) di belakang nginx, Redis untuk
   cache/session/antrean — lihat **[DEPLOY.md](DEPLOY.md)**
 
@@ -69,9 +69,11 @@ Kolom ini bisa diisi manual **atau** dibiarkan kosong. Kalau kosong:
 Biaya Pelaksanaan Real = Σ rincian bahan baku + Σ kas kategori "upah"
 ```
 
-Kalau keduanya masih nol, dipakai nilai Rencana sebagai proyeksi agar kolom
-profit tetap terisi saat kegiatan masih draft. Sumber yang aktif terlihat di
-`pelaksanaan_real_sumber` (`manual` / `realisasi` / `proyeksi_rencana`).
+Kalau keduanya masih nol, nilainya **nol** — bukan diproyeksikan dari Rencana.
+Proyeksi itu pernah ada supaya kolom profit tidak kosong pada kegiatan baru,
+tetapi hasilnya menyesatkan: angkanya terbaca seolah belanjanya sudah terjadi
+padahal belum ada satu pun yang dicatat. Sumber yang aktif terlihat di
+`pelaksanaan_real_sumber` (`manual` / `realisasi`).
 
 Bahan baku **tidak** dicatat sebagai arus kas — angkanya berasal dari tabel
 `bahan_baku_items`, satu baris per barang, dengan `subtotal` yang selalu
@@ -81,6 +83,56 @@ Setiap perubahan item memicu `Kegiatan::recalculate()`, jadi taksasi tidak
 pernah tertinggal dari rinciannya.
 
 ---
+
+### Kegiatan baru dibuat kosong
+
+`POST /api/kegiatan` hanya butuh `nama` dan `pagu`. Persentase **tidak** diisi
+apa pun — tidak dari default pengaturan, tidak dari default kolom database.
+Seluruh rate bernilai nol sampai pengguna menentukannya sendiri di halaman
+detail. Begitu PPN dan PPh diisi, semua angka lain terhitung otomatis persis
+seperti di spreadsheet.
+
+Konsekuensinya perlu ditangani klien: dengan rate nol, rumusnya menghasilkan
+`profit_kotor = pagu` — benar secara aritmetika, tetapi belum berarti apa-apa.
+Karena itu resource mengirim **`rate_terisi`**:
+
+```json
+{ "rate_terisi": false }
+```
+
+`false` berarti persentasenya belum pernah ditentukan, dan bagian taksasi
+sebaiknya ditampilkan sebagai "belum diisi" alih-alih sebagai hasil
+perhitungan. Aplikasi mobile memakai penanda ini untuk menyembunyikan kartu
+Rincian Transaksi, Pembagian Hasil, dan Persentase sampai rate-nya terisi.
+
+Ada tiga tempat yang dulu mengisi rate diam-diam dan semuanya sudah dicabut:
+`KegiatanRequest::prepareForValidation()`, penggabungan `RateDefaults` di
+`KegiatanController::store()`, dan default kolom pada migrasi (lihat migrasi
+`reset_default_rate_kegiatan`). Endpoint pratinjau juga menghitung persis apa
+yang dikirim, tanpa menambahkan default.
+
+## Data master
+
+Daftar acuan yang dikelola superadmin, dipakai sebagai **pilihan cepat** pada
+form — bukan pembatas. Kolom satuan, toko, dan sumber dana tetap bisa diketik
+bebas; daftar ini yang membuat ejaannya konsisten pada pemakaian sehari-hari.
+
+| Jenis | Isi | Dipakai di |
+|---|---|---|
+| `satuan` | sak, m3, batang, kg, … | Rincian bahan baku |
+| `toko` | Nama toko / supplier | Rincian bahan baku |
+| `sumber_dana` | APBD, APBN, Dana Desa, … | Data kegiatan |
+
+Semua peran **membaca** (pilihannya dibutuhkan saat mengisi form); hanya
+superadmin **menambah**, supaya daftar tidak lekas penuh varian ejaan yang
+sama. Menghapus pilihan memakai soft delete dan **tidak mengubah data lama** —
+bahan baku menyimpan teks satuan dan tokonya, bukan tautan ke daftar ini.
+
+**Yang sengaja TIDAK dijadikan data master:** kategori kas dan status kegiatan.
+Keduanya enum di kode karena terikat rumus — `KategoriKas::pelaksanaanReal()`
+dipakai langsung pada query `Kegiatan::totalUpah()`. Kalau daftarnya bisa
+disunting, seseorang bisa mengubah belanja mana yang dihitung sebagai Biaya
+Pelaksanaan Real tanpa sadar, dan angka profit ikut bergeser diam-diam.
 
 ## Peran & hak akses
 
@@ -99,6 +151,8 @@ diizinkan server.
 | Kas kategori lain (termin, kewajiban, pajak, bagi hasil) | ya | — |
 | Mengubah default rate / pengaturan | ya | — |
 | Mengelola akun petugas | ya | — |
+| Mengelola data master (satuan, toko, sumber dana) | ya | — |
+| Membaca data master sebagai pilihan form | ya | ya |
 | Melihat jejak aktivitas akun lain | ya | — |
 | Melihat jejak aktivitas sendiri | ya | ya |
 
@@ -178,7 +232,7 @@ masih memakai proyeksi rencana.
 ### Perintah berguna
 
 ```bash
-php artisan test                  # 65 test, 331 assertion
+php artisan test                  # 80 test, 392 assertion
 ./vendor/bin/pint                 # format kode
 php artisan route:list --path=api # daftar endpoint
 ```
@@ -226,6 +280,9 @@ pada 422.
 | GET/PUT/DELETE | `/api/cash-flows/{id}` | Detail / ubah / hapus |
 | GET/POST | `/api/pengguna` | Daftar / buat akun petugas — superadmin |
 | GET/PUT/DELETE | `/api/pengguna/{id}` | Detail / ubah / nonaktifkan petugas |
+| GET | `/api/master` | Semua daftar acuan sekaligus |
+| GET/POST | `/api/master/{jenis}` | Isi satu daftar / tambah pilihan |
+| PUT/DELETE | `/api/master/{id}` | Ubah / hapus pilihan — superadmin |
 | GET | `/api/aktivitas/saya` | Jejak aktivitas sendiri |
 | GET | `/api/aktivitas` | Jejak seluruh akun — superadmin |
 | GET | `/api/aktivitas/ringkasan` | Hitungan per modul & per akun — superadmin |

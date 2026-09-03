@@ -86,11 +86,16 @@ final class TaksasiCalculator
         $administrasi = self::rp($netto * $rAdministrasi / 100);
         $perusahaan = self::rp($netto * $rPerusahaan / 100);
 
-        // Biaya Pelaksanaan Real: kalau tidak diisi, pakai rencana sebagai
-        // proyeksi supaya kolom profit tetap terisi saat kegiatan masih draft.
+        // Biaya Pelaksanaan Real: kalau tidak diisi, nilainya NOL.
+        //
+        // Sebelumnya kolom ini diproyeksikan dari Rencana supaya profit tidak
+        // kosong pada kegiatan baru. Itu menyesatkan: angkanya terbaca seolah
+        // belanjanya sudah terjadi padahal belum ada satu pun yang dicatat.
+        // Kegiatan baru sekarang benar-benar kosong, dan angkanya terisi
+        // sendiri begitu rincian bahan baku atau pembayaran upah diinput.
         $real = isset($input['pelaksanaan_real']) && $input['pelaksanaan_real'] !== null
             ? self::rp($input['pelaksanaan_real'])
-            : $rencana;
+            : 0;
 
         // ---- profit ----
         $profitKotor = $netto - $kewajiban - $real - $administrasi - $perusahaan;

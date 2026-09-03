@@ -2003,6 +2003,235 @@
                 ]
             }
         },
+        "/api/master": {
+            "get": {
+                "tags": [
+                    "Data Master"
+                ],
+                "summary": "Semua daftar acuan",
+                "description": "Seluruh daftar acuan sekaligus, dikelompokkan per jenis. Satu panggilan cukup untuk mengisi semua pilihan di form, jadi aplikasi tidak perlu memanggil per jenis.",
+                "operationId": "masterSemua",
+                "parameters": [
+                    {
+                        "name": "semua",
+                        "in": "query",
+                        "description": "true untuk ikut menyertakan yang dinonaktifkan (dipakai layar pengelolaan)",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/master/{jenis}": {
+            "get": {
+                "tags": [
+                    "Data Master"
+                ],
+                "summary": "Isi satu daftar",
+                "description": "Isi satu daftar acuan. `jenis` salah satu dari: satuan, toko, sumber_dana.",
+                "operationId": "masterIndex",
+                "parameters": [
+                    {
+                        "name": "jenis",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "satuan",
+                                "toko",
+                                "sumber_dana"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "semua",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Jenis tidak dikenal"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Data Master"
+                ],
+                "summary": "Tambah pilihan",
+                "description": "Menambah satu pilihan ke daftar. Hanya superadmin.",
+                "operationId": "masterStore",
+                "parameters": [
+                    {
+                        "name": "jenis",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "satuan",
+                                "toko",
+                                "sumber_dana"
+                            ]
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nama": {
+                                        "type": "string",
+                                        "example": "sak"
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "urutan": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "aktif": {
+                                        "type": "boolean",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Tersimpan"
+                    },
+                    "403": {
+                        "description": "Bukan superadmin"
+                    },
+                    "422": {
+                        "description": "Nama sudah ada di daftar ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/master/{id}": {
+            "put": {
+                "tags": [
+                    "Data Master"
+                ],
+                "summary": "Ubah pilihan",
+                "description": "Mengubah satu pilihan. Jenisnya tidak bisa dipindah.",
+                "operationId": "masterUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nama": {
+                                        "type": "string"
+                                    },
+                                    "keterangan": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "urutan": {
+                                        "type": "integer"
+                                    },
+                                    "aktif": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tersimpan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Data Master"
+                ],
+                "summary": "Hapus pilihan",
+                "description": "Menghapus satu pilihan dari daftar. Data lama yang sudah memakai namanya TIDAK berubah, karena bahan baku menyimpan teks satuan dan tokonya, bukan id.",
+                "operationId": "masterDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus"
+                    },
+                    "403": {
+                        "description": "Bukan superadmin"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/referensi": {
             "get": {
                 "tags": [
@@ -3420,6 +3649,10 @@
         {
             "name": "Lampiran",
             "description": "Lampiran"
+        },
+        {
+            "name": "Data Master",
+            "description": "Data Master"
         },
         {
             "name": "Pengguna",

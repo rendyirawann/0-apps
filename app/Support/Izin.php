@@ -68,6 +68,18 @@ final class Izin
      * Riwayat sendiri selalu boleh dilihat siapa pun lewat endpoint terpisah,
      * jadi izin ini khusus untuk melihat pekerjaan orang lain.
      */
+    /**
+     * Mengelola daftar acuan (satuan, toko, sumber dana).
+     *
+     * Hanya superadmin. Petugas tetap MEMBACA daftarnya -- pilihannya
+     * dibutuhkan saat mengisi bahan baku -- tetapi tidak menambah isinya,
+     * supaya daftar tidak lekas penuh varian ejaan yang sama.
+     */
+    public static function kelolaMaster(?User $user): bool
+    {
+        return $user?->isSuperadmin() ?? false;
+    }
+
     public static function lihatAktivitasSemua(?User $user): bool
     {
         return $user?->isSuperadmin() ?? false;
@@ -144,6 +156,7 @@ final class Izin
             'kelola_kegiatan' => self::kelolaKegiatan($user),
             'kelola_pengaturan' => self::kelolaPengaturan($user),
             'kelola_pengguna' => self::kelolaPengguna($user),
+            'kelola_master' => self::kelolaMaster($user),
             'lihat_aktivitas_semua' => self::lihatAktivitasSemua($user),
             'kelola_bahan_baku' => self::kelolaBahanBaku($user),
             'kelola_lampiran' => self::kelolaLampiran($user),

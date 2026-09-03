@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CashFlowController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\KegiatanController;
 use App\Http\Controllers\Api\LampiranController;
+use App\Http\Controllers\Api\MasterDataController;
 use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserController;
@@ -103,6 +104,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('pengguna', UserController::class)
         ->parameters(['pengguna' => 'user'])
         ->names('api.pengguna');
+
+    // ---- Data master (satuan, toko, sumber dana) ----
+    //
+    // Membaca terbuka untuk semua peran: pilihannya dibutuhkan saat mengisi
+    // bahan baku dan kegiatan. Menulis dijaga MasterDataRequest -> superadmin.
+    Route::prefix('master')->group(function (): void {
+        Route::get('/', [MasterDataController::class, 'index'])->name('api.master.index');
+        Route::get('/{jenis}', [MasterDataController::class, 'perJenis'])->name('api.master.jenis');
+        Route::post('/{jenis}', [MasterDataController::class, 'store'])->name('api.master.store');
+        Route::match(['put', 'patch'], '/{master}', [MasterDataController::class, 'update'])->name('api.master.update');
+        Route::delete('/{master}', [MasterDataController::class, 'destroy'])->name('api.master.destroy');
+    });
 
     // ---- Jejak aktivitas ----
     // "saya" didaftarkan lebih dulu agar tidak tertangkap rute lain, dan

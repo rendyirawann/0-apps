@@ -128,6 +128,34 @@ class Kegiatan extends Model
     /**
      * Realisasi Biaya Pelaksanaan = bahan baku (rincian item) + upah (kas).
      */
+    /**
+     * Apakah persentase kegiatan ini sudah pernah ditentukan.
+     *
+     * Kegiatan baru dibuat hanya dengan nama dan pagu, sehingga seluruh rate
+     * masih nol. Dengan rate nol, rumusnya menghasilkan profit = pagu -- angka
+     * yang benar secara aritmetika tetapi tidak berarti apa-apa. Penanda ini
+     * dikirim ke aplikasi supaya bagian taksasi ditampilkan sebagai "belum
+     * diisi", bukan sebagai hasil perhitungan.
+     */
+    public function rateTerisi(): bool
+    {
+        foreach ([
+            $this->rate_ppn,
+            $this->rate_pph,
+            $this->rate_rencana,
+            $this->rate_kewajiban,
+            $this->rate_administrasi,
+            $this->rate_perusahaan,
+            $this->rate_investor,
+        ] as $rate) {
+            if ((float) $rate > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function realisasiPelaksanaan(): int
     {
         return $this->totalBahanBaku() + $this->totalUpah();
@@ -154,17 +182,16 @@ class Kegiatan extends Model
             return 'manual';
         }
 
-        return $this->realisasiPelaksanaan() > 0 ? 'realisasi' : 'proyeksi_rencana';
+        // 'realisasi' juga saat totalnya masih nol: nol itu keadaan yang
+        // sebenarnya, bukan mode lain.
+        return 'realisasi';
     }
 
     public function hitung(): TaksasiResult
     {
-        $real = $this->pelaksanaan_real;
-
-        if ($real === null) {
-            $realisasi = $this->realisasiPelaksanaan();
-            $real = $realisasi > 0 ? $realisasi : null;
-        }
+        // Tanpa nilai manual, yang dipakai adalah realisasi apa adanya --
+        // termasuk nol. Tidak ada lagi proyeksi dari Rencana.
+        $real = $this->pelaksanaan_real ?? $this->realisasiPelaksanaan();
 
         return app(TaksasiCalculator::class)->hitung([
             'pagu' => $this->pagu,

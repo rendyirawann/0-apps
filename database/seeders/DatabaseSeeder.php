@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\JenisMaster;
 use App\Enums\KategoriKas;
 use App\Models\BahanBakuItem;
 use App\Models\CashFlow;
 use App\Models\Kegiatan;
+use App\Models\MasterData;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -17,6 +19,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->seedMasterData();
         $this->seedUsers();
         $this->seedSettings();
         $this->seedKegiatan();
@@ -28,6 +31,31 @@ class DatabaseSeeder extends Seeder
      * Superadmin sengaja hanya dibuat di sini — tidak ada endpoint yang bisa
      * menciptakan superadmin kedua.
      */
+    /**
+     * Daftar acuan awal: satuan, toko, sumber dana.
+     *
+     * Dipakai updateOrCreate supaya seeder bisa dijalankan ulang tanpa
+     * menggandakan isi daftar, dan supaya daftar yang sudah disunting
+     * superadmin tidak tertimpa nama baru.
+     */
+    private function seedMasterData(): void
+    {
+        foreach (JenisMaster::cases() as $jenis) {
+            foreach ($jenis->contoh() as $urutan => $nama) {
+                MasterData::query()->updateOrCreate(
+                    ['jenis' => $jenis->value, 'nama' => $nama],
+                    ['urutan' => $urutan, 'aktif' => true],
+                );
+            }
+        }
+
+        $this->command?->info(sprintf(
+            'Data master : %d pilihan (%s)',
+            MasterData::query()->count(),
+            implode(', ', array_map(fn (JenisMaster $j) => $j->label(), JenisMaster::cases())),
+        ));
+    }
+
     private function seedUsers(): void
     {
         $super = User::query()->updateOrCreate(

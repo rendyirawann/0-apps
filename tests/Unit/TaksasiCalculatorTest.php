@@ -35,6 +35,12 @@ class TaksasiCalculatorTest extends TestCase
             'rate_perusahaan' => 1.5,
             'rate_investor' => 50,
             'jml_owner' => 3,
+
+            // Pada sheet aslinya kolom Biaya Pelaksanaan Real memang terisi,
+            // sebesar Rencana. Dikirim eksplisit di sini supaya verifikasi
+            // terhadap Excel tidak bergantung pada nilai pengganti apa pun --
+            // kalkulator memakai NOL bila kolom ini kosong.
+            'pelaksanaan_real' => 209_400_000,
         ], $override);
     }
 
@@ -158,17 +164,31 @@ class TaksasiCalculatorTest extends TestCase
     }
 
     #[Test]
-    public function pelaksanaan_real_kosong_memakai_rencana_sebagai_proyeksi(): void
+    public function pelaksanaan_real_kosong_berarti_nol_bukan_proyeksi(): void
     {
-        $tanpaReal = $this->calc->hitung($this->rates(['pagu' => 400_000_000]));
-        $denganReal = $this->calc->hitung($this->rates([
+        $tanpaReal = $this->calc->hitung($this->rates([
             'pagu' => 400_000_000,
-            'pelaksanaan_real' => 209_400_000,
+            'pelaksanaan_real' => null,
         ]));
 
-        $this->assertSame($tanpaReal->rencana_pelaksanaan, $tanpaReal->pelaksanaan_real);
-        $this->assertSame($denganReal->profit_kotor, $tanpaReal->profit_kotor);
-        $this->assertSame(0, $tanpaReal->selisih_rencana_real);
+        // Kosong berarti belum ada belanja yang dicatat, bukan "sebesar
+        // rencana". Menebaknya dari Rencana membuat kegiatan baru terbaca
+        // seolah belanjanya sudah berjalan.
+        $this->assertSame(0, $tanpaReal->pelaksanaan_real);
+
+        // Seluruh nilai Rencana masih utuh sebagai pembanding.
+        $this->assertSame(209_400_000, $tanpaReal->rencana_pelaksanaan);
+        $this->assertSame(209_400_000, $tanpaReal->selisih_rencana_real);
+
+        // Karena belum ada belanja, profit kotor persis netto dikurangi
+        // kewajiban, administrasi, dan biaya perusahaan saja.
+        $this->assertSame(
+            $tanpaReal->netto
+                - $tanpaReal->biaya_kewajiban
+                - $tanpaReal->biaya_administrasi
+                - $tanpaReal->biaya_perusahaan,
+            $tanpaReal->profit_kotor,
+        );
     }
 
     #[Test]
@@ -196,7 +216,10 @@ class TaksasiCalculatorTest extends TestCase
     #[Test]
     public function pagu_nol_tidak_membagi_dengan_nol(): void
     {
-        $h = $this->calc->hitung($this->rates(['pagu' => 0]));
+        $h = $this->calc->hitung($this->rates([
+            'pagu' => 0,
+            'pelaksanaan_real' => 0,
+        ]));
 
         $this->assertSame(0, $h->netto);
         $this->assertSame(0, $h->profit_kotor);
@@ -250,6 +273,8 @@ class TaksasiCalculatorTest extends TestCase
             'tanpa investor (0%)' => [
                 [
                     'pagu' => 400_000_000,
+                    // 60% dari netto 349 juta -- sama dengan Rencana.
+                    'pelaksanaan_real' => 209_400_000,
                     'rate_ppn' => 11,
                     'rate_pph' => 1.75,
                     'rate_rencana' => 60,
@@ -267,6 +292,8 @@ class TaksasiCalculatorTest extends TestCase
             'tanpa pajak' => [
                 [
                     'pagu' => 100_000_000,
+                    // Tanpa pajak, netto = pagu, jadi 60% Rencana = 60 juta.
+                    'pelaksanaan_real' => 60_000_000,
                     'rate_ppn' => 0,
                     'rate_pph' => 0,
                     'rate_rencana' => 60,

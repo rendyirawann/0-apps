@@ -9,7 +9,6 @@ use App\Models\BahanBakuItem;
 use App\Models\Kegiatan;
 use App\Models\Lampiran;
 use App\Models\User;
-use App\Services\RateDefaults;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -88,20 +87,32 @@ class PeranDanBahanBakuTest extends TestCase
 
         $this->assertNotNull($kegiatan);
 
-        // Rate diisi dari default pengaturan, bukan nol -- kalau nol, taksasi
-        // langsung menampilkan profit yang salah pada kegiatan yang baru dibuat.
-        $default = RateDefaults::all();
+        // Persentase TIDAK diisi apa pun: kegiatan baru benar-benar kosong,
+        // dan pengguna yang menentukannya sendiri di halaman detail.
+        $this->assertEquals(0.0, (float) $kegiatan->rate_ppn);
+        $this->assertEquals(0.0, (float) $kegiatan->rate_pph);
+        $this->assertEquals(0.0, (float) $kegiatan->rate_rencana);
+        $this->assertEquals(0.0, (float) $kegiatan->rate_investor);
 
-        $this->assertEquals($default['rate_ppn'], (float) $kegiatan->rate_ppn);
-        $this->assertEquals($default['rate_rencana'], (float) $kegiatan->rate_rencana);
-        $this->assertEquals($default['jml_owner'], (int) $kegiatan->jml_owner);
+        // Penanda inilah yang dipakai aplikasi untuk menyembunyikan bagian
+        // taksasi selama persentasenya belum ditentukan.
+        $this->assertFalse($kegiatan->rateTerisi());
 
-        // Snapshot taksasi sudah tersimpan sejak pembuatan.
-        $this->assertGreaterThan(0, (int) $kegiatan->netto);
+        // Pagu tersimpan, dan tanpa pajak netto memang sama dengan pagu.
+        $this->assertSame(400_000_000, (int) $kegiatan->pagu);
+        $this->assertSame(400_000_000, (int) $kegiatan->netto);
+
+        // Yang penting: tidak ada belanja yang dikarang. Dulu nilainya
+        // diproyeksikan dari Rencana sehingga kegiatan baru terbaca seolah
+        // belanjanya sudah berjalan. Diambil dari hitung(), bukan dari kolom
+        // -- pelaksanaan_real di tabel adalah nilai MANUAL (null bila kosong),
+        // sedangkan yang dipakai perhitungan adalah hasil turunannya.
+        $this->assertNull($kegiatan->pelaksanaan_real, 'tidak ada nilai manual');
+        $this->assertSame(0, $kegiatan->hitung()->pelaksanaan_real);
     }
 
     #[Test]
-    public function rate_yang_dikirim_menang_atas_default(): void
+    public function rate_yang_dikirim_tersimpan_sisanya_tetap_nol(): void
     {
         $superadmin = $this->superadmin();
 
@@ -116,8 +127,51 @@ class PeranDanBahanBakuTest extends TestCase
 
         $this->assertEquals(2.65, (float) $kegiatan->rate_pph);
         $this->assertSame(2, (int) $kegiatan->jml_owner);
-        // Yang tidak dikirim tetap memakai default.
-        $this->assertEquals(RateDefaults::all()['rate_ppn'], (float) $kegiatan->rate_ppn);
+
+        // Yang tidak dikirim tetap nol -- tidak ada yang menambahkannya
+        // diam-diam di belakang pengguna.
+        $this->assertEquals(0.0, (float) $kegiatan->rate_ppn);
+        $this->assertEquals(0.0, (float) $kegiatan->rate_rencana);
+
+        // Satu rate saja sudah cukup membuat taksasi dianggap terisi.
+        $this->assertTrue($kegiatan->rateTerisi());
+    }
+
+    #[Test]
+    public function mengisi_persentase_memunculkan_angka_sesuai_excel(): void
+    {
+        $superadmin = $this->superadmin();
+
+        $buat = $this->actingAs($superadmin)->postJson('/api/kegiatan', [
+            'nama' => 'Alur Excel',
+            'pagu' => 400_000_000,
+        ])->assertCreated();
+
+        $id = $buat->json('data.id');
+
+        // Persentase diisi belakangan, persis alur di aplikasi.
+        $this->actingAs($superadmin)->patchJson("/api/kegiatan/{$id}", [
+            'rate_ppn' => 11,
+            'rate_pph' => 1.75,
+            'rate_rencana' => 60,
+            'rate_kewajiban' => 12,
+            'rate_administrasi' => 1,
+            'rate_perusahaan' => 1.5,
+            'rate_investor' => 50,
+            'jml_owner' => 3,
+            'pelaksanaan_real' => 209_400_000,
+        ])->assertOk();
+
+        $kegiatan = Kegiatan::find($id);
+        $hasil = $kegiatan->hitung();
+
+        // Angka-angka dari sheet "Taksasi Pekerjaan".
+        $this->assertSame(44_000_000, $hasil->ppn);
+        $this->assertSame(7_000_000, $hasil->pph);
+        $this->assertSame(349_000_000, $hasil->netto);
+        $this->assertSame(88_995_000, $hasil->profit_kotor);
+        $this->assertSame(14_832_500, $hasil->hasil_bersih_per_owner);
+        $this->assertTrue($kegiatan->rateTerisi());
     }
 
     #[Test]
@@ -418,7 +472,7 @@ class PeranDanBahanBakuTest extends TestCase
         $this->assertSame(0, $segar->totalBahanBaku());
         $this->assertNotSame($profitSebelum, $segar->profit_kotor);
         // Tanpa realisasi apa pun, kembali memakai proyeksi rencana.
-        $this->assertSame('proyeksi_rencana', $segar->sumberPelaksanaanReal());
+        $this->assertSame('realisasi', $segar->sumberPelaksanaanReal());
     }
 
     // --------------------------------------------------------- lampiran

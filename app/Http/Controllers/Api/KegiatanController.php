@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\KegiatanRequest;
 use App\Http\Resources\KegiatanResource;
 use App\Models\Kegiatan;
-use App\Services\RateDefaults;
 use App\Services\TaksasiCalculator;
 use App\Support\ApiResponse;
 use App\Support\Izin;
@@ -118,18 +117,13 @@ class KegiatanController extends Controller
     public function store(KegiatanRequest $request): JsonResponse
     {
         $kegiatan = DB::transaction(function () use ($request): Kegiatan {
-            // Rate yang tidak dikirim diambil dari default pengaturan.
-            // array_replace, bukan array_merge: kunci di sini string, dan
-            // yang dikirim klien harus menang atas default.
-            $data = array_replace(
-                RateDefaults::all(),
-                array_filter(
-                    $request->validated(),
-                    static fn ($nilai) => $nilai !== null,
-                ),
-            );
-
-            $kegiatan = new Kegiatan($data);
+            // Rate TIDAK diisi otomatis dari default.
+            //
+            // Kegiatan baru dibuat kosong: hanya nama dan pagu. Persentase,
+            // biaya pelaksanaan, dan sisanya diinput sesudahnya di halaman
+            // detail. Mengisinya lebih dulu dengan default membuat halaman
+            // detail menampilkan angka yang belum pernah ditentukan siapa pun.
+            $kegiatan = new Kegiatan($request->validated());
             $kegiatan->created_by = $request->user()?->id;
             $kegiatan->updated_by = $request->user()?->id;
             $kegiatan->save();
@@ -294,13 +288,10 @@ class KegiatanController extends Controller
             'jml_owner' => ['nullable', 'integer', 'between:1,50'],
         ]);
 
-        // Rate yang tidak dikirim diisi default, bukan 0 -- kalau dibiarkan 0
-        // pratinjau akan menampilkan profit 100% dan menyesatkan.
-        foreach (RateDefaults::all() as $key => $value) {
-            if (! array_key_exists($key, $data) || $data[$key] === null) {
-                $data[$key] = $value;
-            }
-        }
+        // Pratinjau menghitung PERSIS apa yang dikirim, tanpa mengisi rate
+        // yang kosong dengan default. Form perlu memperlihatkan akibat dari
+        // angka yang sedang diketik pengguna, bukan akibat dari angka yang
+        // diam-diam ditambahkan server.
 
         return ApiResponse::success(
             $this->calculator->hitung($data)->toArray(),

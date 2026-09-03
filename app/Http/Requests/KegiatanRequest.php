@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Enums\StatusKegiatan;
-use App\Services\RateDefaults;
 use App\Support\Izin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -19,26 +18,15 @@ class KegiatanRequest extends FormRequest
         return Izin::kelolaKegiatan($this->user());
     }
 
-    /** Kegiatan baru: rate yang tidak dikirim diisi dari default. */
-    protected function prepareForValidation(): void
-    {
-        if (! $this->isMethod('POST')) {
-            return;
-        }
-
-        $defaults = RateDefaults::all();
-        $fill = [];
-
-        foreach ($defaults as $key => $value) {
-            if (! $this->has($key) || $this->input($key) === null) {
-                $fill[$key] = $value;
-            }
-        }
-
-        if ($fill !== []) {
-            $this->merge($fill);
-        }
-    }
+    /*
+     * Tidak ada prepareForValidation() yang mengisi rate dari default.
+     *
+     * Semula method itu menyuntikkan RateDefaults ke setiap permintaan POST,
+     * sehingga kegiatan yang dibuat hanya dengan nama dan pagu tetap keluar
+     * dengan PPN 11%, PPh 1,75%, dan seterusnya. Akibatnya halaman detail
+     * menampilkan netto sampai profit per owner seolah sudah ditentukan
+     * seseorang. Persentase sekarang diisi pengguna sendiri.
+     */
 
     public function rules(): array
     {

@@ -87,7 +87,70 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'"
 echo "  DB_USERNAME=${DB_USER}"
 echo "  DB_PASSWORD=${SANDI}   <-- CATAT, dipakai di .env"
 
-# ------------------------------------------------------------------- 5. folder
+# --------------------------------------------------------------- 5. FrankenPHP
+# Dipasang SISTEM-WIDE ke /usr/local/bin, bukan ke folder aplikasi.
+#
+# Octane mencari binernya dengan ExecutableFinder('frankenphp', null,
+# [base_path()]) -- yaitu PATH sistem DITAMBAH folder aplikasi. Kalau dibiarkan
+# diunduh octane:install, binernya (~150 MB) mendarat di dalam folder rilis dan
+# ikut terhapus setiap deploy, sehingga harus diunduh ulang terus-menerus.
+# Dengan berada di PATH, satu salinan dipakai semua rilis.
+info "Memasang biner FrankenPHP sistem-wide"
+
+ARCH="$(uname -m)"
+
+# Varian biner dipilih dengan cara yang SAMA seperti Octane: bila getconf
+# GNU_LIBC_VERSION berhasil, sistemnya glibc (Ubuntu/Debian) dan yang dipakai
+# adalah varian "-gnu"; bila gagal, sistemnya musl (Alpine) dan yang dipakai
+# adalah build statis. Menyalin logika ini penting supaya biner yang terpasang
+# persis sama dengan yang akan dicari Octane -- kalau berbeda, octane:install
+# akan mengunduh lagi ke folder rilis dan masalah "hilang setiap deploy"
+# kembali muncul.
+if getconf GNU_LIBC_VERSION >/dev/null 2>&1; then
+    GNU="-gnu"
+else
+    GNU=""
+fi
+
+case "$ARCH" in
+    x86_64)  ASET="frankenphp-linux-x86_64${GNU}" ;;
+    aarch64) ASET="frankenphp-linux-aarch64${GNU}" ;;
+    *)
+        echo "FrankenPHP hanya tersedia untuk x86_64 dan aarch64 (arsitektur: $ARCH)."
+        exit 1
+        ;;
+esac
+
+# Rilis FrankenPHP menyertakan berkas pendamping (.sha256, .asc) dengan nama
+# berawalan sama. Pola diakhiri "$" supaya hanya URL yang PERSIS berakhir
+# dengan nama asetnya yang cocok -- kalau tidak, yang terunduh bisa berkas
+# checksum berukuran beberapa byte, dan galatnya baru muncul saat Octane
+# mencoba menjalankannya.
+URL="$(curl -fsSL https://api.github.com/repos/php/frankenphp/releases/latest \
+    | grep '"browser_download_url"' \
+    | cut -d'"' -f4 \
+    | grep -E "/${ASET}$" \
+    | head -1)"
+
+if [ -z "$URL" ]; then
+    echo "Tidak menemukan rilis FrankenPHP untuk $ASET."
+    echo "Unduh manual dari https://github.com/php/frankenphp/releases"
+    exit 1
+fi
+
+echo "  mengunduh $URL"
+curl -fsSL "$URL" -o /usr/local/bin/frankenphp
+chmod +x /usr/local/bin/frankenphp
+
+# Membuktikan binernya jalan sebelum lanjut, bukan sekadar ada.
+/usr/local/bin/frankenphp version
+
+# FrankenPHP mengikat port 80/443 secara bawaan bila dipanggil langsung; di
+# sini ia hanya dipakai Octane pada 127.0.0.1:8000, jadi izin port istimewa
+# tidak diperlukan. Kalau nanti ingin FrankenPHP berdiri sendiri tanpa nginx:
+#   setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp
+
+# ------------------------------------------------------------------- 6. folder
 info "Menyiapkan folder aplikasi"
 mkdir -p "$APP_DIR"/{releases,shared/storage,repo} /var/log/o-api /var/www/certbot
 
@@ -105,12 +168,12 @@ fi
 chown -R www-data:www-data "$APP_DIR" /var/log/o-api
 chmod -R 775 "$APP_DIR/shared/storage"
 
-# ------------------------------------------------------------------ 6. systemd
+# ------------------------------------------------------------------ 7. systemd
 info "Memasang unit systemd"
 cp "$APP_DIR"/repo/deploy/systemd/*.service /etc/systemd/system/
 systemctl daemon-reload
 
-# ------------------------------------------------------------------- 7. nginx
+# ------------------------------------------------------------------- 8. nginx
 info "Memasang konfigurasi nginx"
 cp "$APP_DIR/repo/deploy/nginx/${DOMAIN}.conf" /etc/nginx/sites-available/
 ln -sfn "/etc/nginx/sites-available/${DOMAIN}.conf" /etc/nginx/sites-enabled/
@@ -145,13 +208,14 @@ Selesai. Langkah berikutnya, berurutan:
   2. cd $APP_DIR/repo && composer install --no-dev
      php artisan key:generate --force   (menulis ke shared/.env)
 
-  3. php artisan octane:install --server=frankenphp
+  3. sudo -u www-data $APP_DIR/repo/deploy/deploy.sh
 
-  4. sudo -u www-data $APP_DIR/repo/deploy/deploy.sh
+     Tidak perlu menjalankan octane:install manual -- deploy.sh sudah
+     melakukannya pada setiap rilis, dan binernya sudah ada di PATH.
 
-  5. php artisan db:seed --force      (sekali, untuk akun superadmin)
+  4. php artisan db:seed --force      (sekali, untuk akun superadmin)
      Lalu SEGERA ganti passwordnya lewat aplikasi.
 
-  6. systemctl enable --now o-api-octane o-api-queue
+  5. systemctl enable --now o-api-octane o-api-queue
 
 PESAN

@@ -66,11 +66,15 @@ cd /var/www/o-api/repo
 nano /var/www/o-api/shared/.env       # lihat daftar di bawah
 composer install --no-dev --optimize-autoloader
 php artisan key:generate --force
-php artisan octane:install --server=frankenphp
-sudo -u www-data deploy/deploy.sh
+
+sudo -u www-data deploy/deploy.sh     # octane:install sudah termasuk di sini
 php artisan db:seed --force           # akun superadmin
 systemctl enable --now o-api-octane o-api-queue
 ```
+
+Tidak ada `php artisan octane:install` manual di daftar ini — `deploy.sh`
+menjalankannya pada setiap rilis. Alasannya ada di bagian
+**Octane dipasang di server, bukan di komputer lokal**.
 
 ### Isi `.env` produksi
 
@@ -148,20 +152,88 @@ menautkannya ke `shared/storage`. Kalau `storage/` ikut di dalam folder
 rilis, **seluruh bukti belanja hilang pada deploy berikutnya** — dan tidak ada
 cara memulihkannya.
 
-### Octane menahan aplikasi di memori
+### Octane dipasang di server, bukan di komputer lokal
 
-Konsekuensinya, setelah deploy **wajib** `octane:reload`; mengganti berkas
-saja tidak berpengaruh karena worker lama masih memegang kode lama.
-`deploy.sh` sudah melakukannya.
+Ada dua bagian, dan keduanya berperilaku berbeda:
 
-Kode ini sudah diperiksa aman untuk Octane:
+| Bagian | Di mana | Cara |
+|---|---|---|
+| Paket `laravel/octane` | **Di repo** (`composer.json`) | `composer install --no-dev` |
+| Biner FrankenPHP | **Di server**, sistem-wide | `setup-server.sh` |
+| `public/frankenphp-worker.php` | **Per rilis** | `deploy.sh` |
 
-- **Tidak ada `env()` di luar `config/`** — jadi `config:cache` tidak membuat
-  nilai berubah menjadi null saat berjalan.
-- **Tidak ada state statis** yang menyimpan data antar-permintaan.
-- `Setting::all2()` memakai `Cache::rememberForever`, yaitu store Redis
-  bersama — bukan memori proses — sehingga perubahan pengaturan langsung
-  terlihat oleh semua worker, bukan hanya worker yang menanganinya.
+**Paketnya ada di repo, bukan dipasang di server.** Ini bukan pilihan gaya:
+kalau `composer require laravel/octane` dijalankan di server di dalam folder
+rilis, `composer.json` dan `composer.lock` yang berubah itu **ikut terhapus
+pada deploy berikutnya** — karena `deploy.sh` mengambil ulang dari git. Octane
+lalu hilang dan Octane-nya mati. Karena itu dependensinya dideklarasikan di
+repo, dan server hanya memasang apa yang tidak bisa disimpan di git.
+
+**Octane tidak dijalankan di komputer lokal.** Octane butuh FrankenPHP,
+Swoole, atau RoadRunner — ketiganya Linux/macOS. Di Windows tidak ada yang
+jalan. Pengembangan lokal tetap memakai `php artisan serve`, dan itu tidak
+masalah: yang berbeda hanya cara aplikasi disajikan, bukan kodenya.
+
+#### Mengapa binernya sistem-wide
+
+Octane mencari binernya begitu:
+
+```php
+// vendor/laravel/octane/src/FrankenPhp/Concerns/FindsFrankenPhpBinary.php
+(new ExecutableFinder())->find('frankenphp', null, [base_path()]);
+```
+
+Yaitu **PATH sistem, ditambah folder aplikasi**. Kalau dibiarkan diunduh oleh
+`octane:install`, binernya (~150 MB) mendarat di `base_path()` — di dalam
+folder rilis — dan ikut terhapus setiap deploy, jadi harus diunduh ulang
+terus-menerus. Dengan memasangnya di `/usr/local/bin/frankenphp`, satu salinan
+dipakai semua rilis dan `octane:install` menemukannya lewat PATH lalu tidak
+mengunduh apa pun.
+
+`setup-server.sh` memilih varian binernya dengan **logika yang sama seperti
+Octane**: bila `getconf GNU_LIBC_VERSION` berhasil, sistemnya glibc
+(Ubuntu/Debian) dan yang dipakai varian `-gnu`; bila gagal, sistemnya musl
+(Alpine) dan yang dipakai build statis. Menyamakan logika ini penting — kalau
+binernya beda dari yang dicari Octane, `octane:install` akan mengunduh lagi ke
+folder rilis dan masalah "hilang setiap deploy" kembali.
+
+#### Mengapa `octane:install` dijalankan setiap deploy
+
+`octane:install` menulis `public/frankenphp-worker.php`, dan berkas itu ada di
+dalam folder rilis. Rilis baru tidak akan memilikinya kalau perintah ini
+dilewati, dan Octane gagal start. Perintahnya idempoten dan, dengan biner
+sudah di PATH, tidak mengunduh apa pun — jadi aman dijalankan berulang.
+
+Berkas `frankenphp`, `public/frankenphp-worker.php`, dan `Caddyfile`
+dimasukkan `.gitignore`: semuanya dihasilkan di server, bukan disimpan di repo.
+
+#### Setelah deploy wajib `octane:reload`
+
+Octane menahan aplikasi di memori antar-permintaan. Mengganti berkas saja
+tidak berpengaruh — worker lama masih memegang kode lama sampai dimuat ulang.
+`deploy.sh` sudah memanggil `octane:reload`, yang membiarkan worker
+menyelesaikan permintaan berjalan sebelum diganti, sehingga tidak ada
+permintaan yang terputus.
+
+Pekerja antrean lain ceritanya: prosesnya harus **di-restart**, bukan reload
+(`queue:restart` menandai agar berhenti setelah pekerjaan berjalan selesai,
+lalu systemd menghidupkannya kembali dengan kode baru).
+
+#### Kode ini sudah diperiksa aman untuk Octane
+
+Tiga hal yang biasanya membuat aplikasi rusak di Octane, dan keadaannya di
+sini:
+
+- **`env()` di luar `config/`** — tidak ada. Jadi `config:cache` tidak membuat
+  nilainya menjadi null saat berjalan. (`grep -rn "env(" app/ routes/`)
+- **State statis yang bertahan antar-permintaan** — tidak ada.
+- **Cache di memori proses** — `Setting::all2()` memakai
+  `Cache::rememberForever`, yaitu store Redis bersama, bukan memori worker.
+  Akibatnya perubahan pengaturan langsung terlihat oleh **semua** worker, bukan
+  hanya worker yang menanganinya.
+
+`config:cache` sendiri **wajib** untuk Octane: tanpanya setiap worker membaca
+`.env` pada setiap boot. `deploy.sh` membangunnya.
 
 ### Jumlah worker dibatasi 4
 
@@ -208,6 +280,45 @@ journalctl -u o-api-octane -f
 journalctl -u o-api-queue -f
 tail -f /var/www/o-api/shared/storage/logs/laravel.log
 tail -f /var/log/nginx/o-api.error.log
+```
+
+## Kalau Octane tidak mau jalan
+
+Periksa berurutan — hampir semua kasus berhenti di salah satu dari empat ini:
+
+```bash
+# 1. Binernya ada dan bisa dijalankan?
+which frankenphp && frankenphp version
+#    Kosong -> ulangi bagian FrankenPHP di setup-server.sh.
+#    Ada tapi "cannot execute" -> varian binernya salah (glibc vs musl).
+
+# 2. Worker per rilis sudah ditulis?
+ls -l /var/www/o-api/current/public/frankenphp-worker.php
+#    Tidak ada -> deploy.sh belum menjalankan octane:install.
+
+# 3. Portnya benar-benar diikat?
+ss -lntp | grep 8000
+
+# 4. Apa kata prosesnya?
+journalctl -u o-api-octane -n 50 --no-pager
+```
+
+Gejala yang sering muncul:
+
+| Gejala | Sebabnya biasanya |
+|---|---|
+| `502 Bad Gateway` dari nginx | Octane mati atau belum mengikat :8000. Lihat `journalctl`. |
+| Perubahan kode tidak terasa | `octane:reload` belum jalan; worker masih memegang kode lama. |
+| Nilai `.env` terbaca null | `config:cache` dibangun sebelum `.env` diisi. Jalankan ulang `php artisan config:cache`. |
+| `413 Request Entity Too Large` saat unggah struk | `client_max_body_size` di nginx, bukan Octane. |
+| Koneksi database habis | `--workers` terlalu tinggi; satu worker = satu koneksi PostgreSQL. |
+
+Menjalankan Octane di latar depan untuk melihat galatnya langsung:
+
+```bash
+sudo systemctl stop o-api-octane
+cd /var/www/o-api/current
+sudo -u www-data php artisan octane:start --server=frankenphp     --host=127.0.0.1 --port=8000 --workers=1
 ```
 
 ## Kalau ingin memakai Swoole

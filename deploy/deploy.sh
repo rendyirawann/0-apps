@@ -61,13 +61,24 @@ info "Memasang dependensi (tanpa dev)"
 cd "$RELEASE"
 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# ------------------------------------------------------------------ 4. migrasi
+# -------------------------------------------------------------- 4. Octane
+# Dijalankan pada SETIAP rilis, bukan sekali saat setup.
+#
+# octane:install menulis public/frankenphp-worker.php, dan berkas itu berada
+# di dalam folder rilis -- jadi rilis baru tidak akan memilikinya kalau
+# perintah ini dilewati. Perintahnya idempoten: karena biner FrankenPHP sudah
+# terpasang sistem-wide di /usr/local/bin, ExecutableFinder menemukannya di
+# PATH dan tidak ada yang diunduh ulang.
+info "Menyiapkan worker Octane"
+$PHP artisan octane:install --server=frankenphp --no-interaction
+
+# ------------------------------------------------------------------ 5. migrasi
 # Dijalankan SEBELUM current dialihkan, supaya skema sudah siap ketika kode
 # baru mulai melayani permintaan. --force karena tidak ada prompt di CI.
 info "Menjalankan migrasi"
 $PHP artisan migrate --force
 
-# --------------------------------------------------------------------- 5. cache
+# --------------------------------------------------------------------- 6. cache
 # config:cache WAJIB untuk Octane: tanpanya, setiap worker membaca .env pada
 # setiap boot dan env() di luar config/ akan mengembalikan null.
 info "Membangun cache konfigurasi, rute, dan view"
@@ -83,12 +94,12 @@ $PHP artisan l5-swagger:generate
 # memang privat.
 $PHP artisan storage:link || true
 
-# ------------------------------------------------------------------ 6. alihkan
+# ------------------------------------------------------------------ 7. alihkan
 info "Mengalihkan current -> rilis baru"
 ln -sfn "$RELEASE" "${CURRENT_LINK}.tmp"
 mv -Tf "${CURRENT_LINK}.tmp" "$CURRENT_LINK"
 
-# ------------------------------------------------------------- 7. muat ulang
+# ------------------------------------------------------------- 8. muat ulang
 # reload, BUKAN restart: worker lama menyelesaikan permintaan yang sedang
 # berjalan lalu diganti, jadi tidak ada permintaan yang terputus.
 info "Memuat ulang Octane"
@@ -99,12 +110,12 @@ $PHP artisan octane:reload || sudo systemctl restart o-api-octane
 info "Me-restart pekerja antrean"
 $PHP artisan queue:restart
 
-# ------------------------------------------------------------ 8. bersih-bersih
+# ------------------------------------------------------------ 9. bersih-bersih
 info "Menyisakan $KEEP_RELEASES rilis terakhir"
 cd "$RELEASES_DIR"
 ls -1dt */ 2>/dev/null | tail -n "+$((KEEP_RELEASES + 1))" | xargs -r rm -rf
 
-# ------------------------------------------------------------------ 9. periksa
+# ----------------------------------------------------------------- 10. periksa
 info "Memeriksa kesehatan"
 sleep 2
 

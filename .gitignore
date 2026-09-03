@@ -25,3 +25,12 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Octane / FrankenPHP: biner dan worker dihasilkan di server, bukan disimpan
+# di repo. Binernya dipasang sistem-wide (lihat DEPLOY.md), sedangkan
+# public/frankenphp-worker.php dibuat ulang oleh deploy.sh pada setiap rilis.
+/frankenphp
+/frankenphp-worker.php
+/public/frankenphp-worker.php
+/Caddyfile
+**/caddy

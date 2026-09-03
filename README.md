@@ -11,6 +11,12 @@ Flutter (repo terpisah) yang seluruh datanya berasal dari API ini.
 - Autentikasi **Laravel Sanctum** (bearer token) + login sidik jari
 - Dokumentasi **Swagger / OpenAPI** — 33 path, 46 operasi
 - **65 test**, 331 assertion
+- Produksi: **Laravel Octane** (FrankenPHP) di belakang nginx, Redis untuk
+  cache/session/antrean — lihat **[DEPLOY.md](DEPLOY.md)**
+
+> Octane hanya dipakai di server. Pengembangan lokal tetap
+> `php artisan serve`, karena FrankenPHP/Swoole/RoadRunner tidak berjalan di
+> Windows. Yang berbeda hanya cara aplikasi disajikan, bukan kodenya.
 
 ---
 

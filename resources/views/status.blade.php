@@ -56,7 +56,7 @@
             margin: 0;
             display: grid;
             place-items: center;
-            padding: 24px;
+            padding: clamp(16px, 5vw, 24px);
             background: var(--latar);
             color: var(--teks);
             font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
@@ -77,6 +77,12 @@
 
         main {
             position: relative;
+
+            /* min-width 0 WAJIB pada anak grid. Tanpanya nilainya `auto`,
+               yang berarti kotak ini menolak menyempit di bawah lebar
+               isinya -- dan di layar ponsel judul beserta panelnya terdorong
+               keluar tepi sehingga terpotong. */
+            min-width: 0;
             width: 100%;
             max-width: 520px;
             text-align: center;
@@ -88,13 +94,15 @@
             to   { opacity: 1; transform: none; }
         }
 
-        .nama {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            color: var(--teks-redup);
-            margin: 0 0 20px;
+        /* Baris judul dibuat flex supaya titik dan tulisannya bisa turun
+           baris bersama di layar sempit, bukan terkunci pada satu baris
+           yang lebih lebar daripada layarnya. */
+        .judul {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
         }
 
         .titik-besar {
@@ -102,9 +110,7 @@
             height: 12px;
             border-radius: 50%;
             background: var(--hidup);
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 14px;
+            flex: none;
             box-shadow: 0 0 0 0 color-mix(in srgb, var(--hidup) 60%, transparent);
             animation: denyut 2.4s ease-out infinite;
         }
@@ -116,24 +122,100 @@
         }
 
         h1 {
-            display: inline-block;
             margin: 0;
-            font-size: clamp(1.5rem, 7vw, 2.6rem);
+            min-width: 0;
+
+            /* Batas bawahnya diturunkan agar utuh di layar 320px -- kalimat
+               yang terpotong lebih buruk daripada huruf yang mengecil. */
+            font-size: clamp(1.15rem, 6vw, 2.6rem);
             font-weight: 700;
-            letter-spacing: 0.06em;
-            line-height: 1.1;
+            letter-spacing: 0.05em;
+            line-height: 1.15;
         }
 
-        .keterangan {
-            margin: 18px auto 0;
-            max-width: 40ch;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            color: var(--teks-redup);
+        /* ---------------------------------------------------------------
+           Dinosaurus piksel
+
+           Digambar sendiri dari kotak-kotak SVG, bukan memakai gambar
+           Chrome: asetnya milik orang lain, dan sebuah <rect> jauh lebih
+           ringan daripada berkas gambar yang harus diunduh terpisah --
+           halaman ini memang dibuat agar tidak butuh satu pun berkas luar.
+
+           Warnanya memakai --teks, jadi ikut menyesuaikan tema terang dan
+           gelap tanpa gambar kedua.
+           --------------------------------------------------------------- */
+        .dino {
+            display: block;
+            margin: 0 auto 20px;
+            padding: 0;
+            border: 0;
+            background: none;
+            line-height: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .dino:focus-visible {
+            outline: 2px solid var(--aksen);
+            outline-offset: 8px;
+            border-radius: 8px;
+        }
+
+        .dino svg {
+            width: 88px;
+            height: auto;
+            display: block;
+        }
+
+        .dino .badan { fill: var(--teks); }
+
+        /* Mata sewarna latar, bukan putih: di tema terang, putih di atas
+           kepala gelap tampak benar, tetapi di tema gelap ia menyala. */
+        .dino .mata { fill: var(--latar); }
+
+        /* Dua pose kaki bergantian. steps(1) membuat pergantiannya patah
+           seperti animasi piksel, bukan memudar seperti gambar biasa. */
+        .kaki-1,
+        .kaki-2 { animation: langkah 0.34s steps(1) infinite; }
+
+        /* Setengah putaran di belakang pose pertama, sehingga pada setiap
+           saat tepat satu pose yang terlihat -- tidak pernah dua, tidak
+           pernah kosong. */
+        .kaki-2 { animation-delay: 0.17s; }
+
+        @keyframes langkah {
+            0%, 49.9%  { opacity: 1; }
+            50%, 100%  { opacity: 0; }
+        }
+
+        /* Garis tanah yang bergeser: inilah yang membuat dinonya terbaca
+           sebagai berlari, bukan sekadar menggerakkan kaki di tempat. */
+        .tanah {
+            stroke: var(--teks-redup);
+            stroke-width: 1;
+            animation: geser 0.55s linear infinite;
+        }
+
+        @keyframes geser {
+            to { stroke-dashoffset: -8; }
+        }
+
+        .dino.melompat svg {
+            animation: lompat 0.55s cubic-bezier(0.25, 0.1, 0.3, 1);
+        }
+
+        /* Kakinya berhenti selagi melayang -- berlari di udara justru
+           merusak ilusinya. */
+        .dino.melompat .kaki-1,
+        .dino.melompat .kaki-2 { animation-play-state: paused; }
+
+        @keyframes lompat {
+            0%, 100% { transform: translateY(0); }
+            40%      { transform: translateY(-26px); }
         }
 
         .panel {
-            margin-top: 34px;
+            margin-top: 30px;
             border: 1px solid var(--garis);
             border-radius: 14px;
             background: var(--latar-kartu);
@@ -192,22 +274,72 @@
         @media (prefers-reduced-motion: reduce) {
             main { animation: none; }
             .titik-besar { animation: none; }
+
+            /* Gerak berulang tanpa henti memicu rasa mual pada sebagian
+               orang. Dinonya tetap ada, hanya berhenti pada satu pose --
+               pose kedua disembunyikan supaya kakinya tidak bertumpuk. */
+            .kaki-1,
+            .kaki-2,
+            .tanah { animation: none; }
+
+            .kaki-2 { opacity: 0; }
+
+            .dino.melompat svg { animation: none; }
         }
     </style>
 </head>
 <body>
     <main>
-        <p class="nama">{{ config('app.name') }}</p>
+        {{-- Tombol, bukan sekadar gambar: yang bisa diketuk harus bisa
+             dicapai lewat papan ketik juga, dan <button> memberi itu tanpa
+             satu baris pun kode tambahan. --}}
+        <button type="button" class="dino" id="dino" aria-label="Dinosaurus piksel berlari. Ketuk untuk melompat.">
+            <svg viewBox="0 0 30 30" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+                <g class="badan">
+                    {{-- Kepala, moncong, dan rahang bawah --}}
+                    <rect x="18" y="1"  width="9" height="6"/>
+                    <rect x="27" y="3"  width="2" height="3"/>
+                    <rect x="18" y="7"  width="8" height="2"/>
 
-        <div>
+                    {{-- Leher: cukup tinggi supaya kepalanya tidak menempel
+                         ke badan dan siluetnya terbaca sebagai dinosaurus,
+                         bukan sekadar gumpalan. --}}
+                    <rect x="15" y="6"  width="4" height="7"/>
+
+                    <rect x="7"  y="12" width="11" height="7"/>
+
+                    {{-- Ekor, meruncing ke belakang lewat dua kotak yang
+                         makin kecil dan makin tinggi. --}}
+                    <rect x="3"  y="10" width="6" height="5"/>
+                    <rect x="0"  y="8"  width="5" height="4"/>
+
+                    {{-- Tangan kecil khas T-rex --}}
+                    <rect x="16" y="14" width="4" height="2"/>
+                </g>
+
+                <rect class="mata" x="24" y="3" width="2" height="2"/>
+
+                {{-- Dua pose kaki. Yang menapak selalu punya telapak; yang
+                     terangkat hanya potongan pendek. --}}
+                <g class="kaki-1">
+                    <rect class="badan" x="8"  y="19" width="3" height="6"/>
+                    <rect class="badan" x="8"  y="25" width="5" height="2"/>
+                    <rect class="badan" x="14" y="19" width="3" height="4"/>
+                </g>
+                <g class="kaki-2">
+                    <rect class="badan" x="14" y="19" width="3" height="6"/>
+                    <rect class="badan" x="14" y="25" width="5" height="2"/>
+                    <rect class="badan" x="8"  y="19" width="3" height="4"/>
+                </g>
+
+                <line class="tanah" x1="0" y1="28" x2="30" y2="28" stroke-dasharray="4 4"/>
+            </svg>
+        </button>
+
+        <div class="judul">
             <span class="titik-besar" aria-hidden="true"></span>
             <h1>SERVER IS LIVE</h1>
         </div>
-
-        <p class="keterangan">
-            Ini alamat API, bukan halaman aplikasi. Buka lewat aplikasi
-            Transaksi Pekerjaan di perangkat Anda.
-        </p>
 
         <dl class="panel">
             <div class="baris">
@@ -231,6 +363,38 @@
     </main>
 
     <script>
+        // Dino melompat saat diketuk atau saat spasi ditekan.
+        (function () {
+            var dino = document.getElementById('dino');
+            var DURASI = 550;
+
+            function lompat() {
+                // Lompatan baru diabaikan selagi yang lama berjalan. Tanpa
+                // ini, mengetuk cepat berkali-kali membuat animasinya
+                // dimulai ulang di tengah udara dan dinonya berkedut.
+                if (dino.classList.contains('melompat')) return;
+
+                dino.classList.add('melompat');
+                setTimeout(function () {
+                    dino.classList.remove('melompat');
+                }, DURASI);
+            }
+
+            dino.addEventListener('click', lompat);
+
+            document.addEventListener('keydown', function (e) {
+                if (e.code !== 'Space' && e.key !== ' ') return;
+
+                // Saat tombolnya sedang terfokus, peramban sudah mengubah
+                // spasi menjadi klik. Menanganinya lagi di sini berarti dua
+                // lompatan untuk satu tekanan.
+                if (document.activeElement === dino) return;
+
+                e.preventDefault();
+                lompat();
+            });
+        })();
+
         // Pemeriksaan sungguhan, bukan hiasan. Alamatnya dibangun di sisi
         // server sehingga tetap benar saat dipasang di bawah subfolder.
         (function () {

@@ -83,7 +83,7 @@
             margin: 0;
             display: grid;
             place-items: center;
-            padding: 24px;
+            padding: clamp(16px, 5vw, 24px);
             background: var(--latar);
             color: var(--teks);
             font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
@@ -105,6 +105,11 @@
 
         main {
             position: relative;
+
+            /* min-width 0 WAJIB pada anak grid: nilai bawaannya `auto`
+               membuat kotak ini menolak menyempit di bawah lebar isinya,
+               dan di layar ponsel isinya terdorong keluar tepi. */
+            min-width: 0;
             width: 100%;
             max-width: 460px;
             text-align: center;

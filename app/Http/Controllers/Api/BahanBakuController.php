@@ -32,6 +32,7 @@ class BahanBakuController extends Controller
                     new OA\Property(property: 'items', type: 'array', items: new OA\Items(ref: '#/components/schemas/BahanBakuItem')),
                     new OA\Property(property: 'total_bahan_baku', type: 'integer', example: 142400000),
                     new OA\Property(property: 'total_upah', type: 'integer', example: 67000000),
+                    new OA\Property(property: 'total_upah_terhutang', type: 'integer', example: 5000000),
                     new OA\Property(property: 'total_pelaksanaan', type: 'integer', example: 209400000),
                     new OA\Property(property: 'boleh_ubah', type: 'boolean'),
                 ], type: 'object'),
@@ -62,7 +63,6 @@ class BahanBakuController extends Controller
                     new OA\Property(property: 'qty', type: 'number', format: 'float', example: 50),
                     new OA\Property(property: 'harga_satuan', type: 'integer', example: 145000),
                     new OA\Property(property: 'tanggal_beli', type: 'string', format: 'date', nullable: true),
-                    new OA\Property(property: 'no_struk', type: 'string', nullable: true),
                     new OA\Property(property: 'toko', type: 'string', nullable: true),
                     new OA\Property(property: 'keterangan', type: 'string', nullable: true),
                 ],
@@ -151,6 +151,7 @@ class BahanBakuController extends Controller
     {
         $bahan = $kegiatan->totalBahanBaku();
         $upah = $kegiatan->totalUpah();
+        $terhutang = $kegiatan->totalUpahTerhutang();
 
         return [
             'kegiatan_id' => $kegiatan->id,
@@ -161,6 +162,12 @@ class BahanBakuController extends Controller
             'total_bahan_baku_formatted' => Rupiah::format($bahan),
             'total_upah' => $upah,
             'total_upah_formatted' => Rupiah::format($upah),
+
+            // Upah yang sudah dicatat tetapi belum dibayar. TIDAK termasuk
+            // dalam total_pelaksanaan -- ditampilkan terpisah supaya terlihat
+            // berapa lagi uang yang masih harus keluar.
+            'total_upah_terhutang' => $terhutang,
+            'total_upah_terhutang_formatted' => Rupiah::format($terhutang),
             'total_pelaksanaan' => $bahan + $upah,
             'total_pelaksanaan_formatted' => Rupiah::format($bahan + $upah),
 

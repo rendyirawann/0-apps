@@ -44,7 +44,6 @@ class BahanBakuItemFactory extends Factory
             'harga_satuan' => $harga,
 
             'tanggal_beli' => now()->subDays(fake()->numberBetween(1, 60))->toDateString(),
-            'no_struk' => 'INV/'.fake()->numerify('####'),
             'toko' => fake()->randomElement(['TB Sumber Jaya', 'TB Maju Bersama', 'UD Karya']),
             'keterangan' => null,
             'urutan' => 0,

@@ -103,11 +103,18 @@ class BersihkanKegiatanTest extends TestCase
         MasterData::factory()->count(5)->create();
         $this->kegiatanLengkap();
 
+        // Dihitung SETELAH data kegiatan dibuat, bukan angka tetap: menyimpan
+        // rincian bahan baku ikut mendaftarkan satuan dan tokonya ke daftar
+        // acuan (MasterDataOtomatis), jadi jumlahnya wajar bertambah di sini.
+        // Yang diuji perintah bersih-bersih, bukan berapa isinya.
+        $masterSebelum = MasterData::query()->count();
+
         $this->artisan('kegiatan:bersihkan --force')->assertSuccessful();
 
         // Menghapus akun berarti kehilangan akses masuk ke aplikasi sendiri.
         $this->assertSame(3, User::query()->count());
-        $this->assertSame(5, MasterData::query()->count());
+        $this->assertSame($masterSebelum, MasterData::query()->count());
+        $this->assertGreaterThanOrEqual(5, $masterSebelum);
     }
 
     #[Test]

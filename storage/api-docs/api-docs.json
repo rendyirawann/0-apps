@@ -672,6 +672,10 @@
                                                     "type": "integer",
                                                     "example": 67000000
                                                 },
+                                                "total_upah_terhutang": {
+                                                    "type": "integer",
+                                                    "example": 5000000
+                                                },
                                                 "total_pelaksanaan": {
                                                     "type": "integer",
                                                     "example": 209400000
@@ -743,10 +747,6 @@
                                     "tanggal_beli": {
                                         "type": "string",
                                         "format": "date",
-                                        "nullable": true
-                                    },
-                                    "no_struk": {
-                                        "type": "string",
                                         "nullable": true
                                     },
                                     "toko": {
@@ -3294,11 +3294,6 @@
                     "tanggal_beli": {
                         "type": "string",
                         "format": "date",
-                        "nullable": true
-                    },
-                    "no_struk": {
-                        "type": "string",
-                        "example": "INV/BJ/1207",
                         "nullable": true
                     },
                     "toko": {

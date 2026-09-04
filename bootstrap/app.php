@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -129,6 +130,31 @@ return Application::configure(basePath: dirname(__DIR__))
                 $isModel ? 'Data tidak ditemukan atau sudah dihapus.' : 'Endpoint tidak ditemukan.',
                 404,
                 code: $isModel ? 'MODEL_NOT_FOUND' : 'NOT_FOUND',
+            );
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Unggahan yang lebih besar dari batas PHP
+        |------------------------------------------------------------------
+        | Kalau berkasnya melampaui post_max_size, PHP membuang body-nya
+        | SEBELUM validasi sempat berjalan. Tanpa penanganan ini, jawabannya
+        | jatuh ke halaman galat HTML -- dan aplikasi yang mengharap JSON
+        | gagal membacanya, sehingga indikator unggahnya menggantung tanpa
+        | pesan apa pun. Persis gejala "mengunggah terus, tidak masuk".
+        |
+        | 413 dengan envelope yang sama membuat aplikasi bisa menampilkan
+        | alasannya dan melepas tombolnya kembali.
+        */
+        $exceptions->render(function (PostTooLargeException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error(
+                'Berkas terlalu besar. Ukuran maksimal 8 MB.',
+                413,
+                code: 'PAYLOAD_TOO_LARGE',
             );
         });
 

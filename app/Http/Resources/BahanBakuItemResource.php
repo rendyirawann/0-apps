@@ -30,7 +30,6 @@ class BahanBakuItemResource extends JsonResource
             'subtotal_formatted' => Rupiah::format($this->subtotal),
 
             'tanggal_beli' => $this->tanggal_beli?->toDateString(),
-            'no_struk' => $this->no_struk,
             'toko' => $this->toko,
             'keterangan' => $this->keterangan,
             'urutan' => (int) $this->urutan,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\JenisMaster;
+use App\Support\MasterDataOtomatis;
 use Database\Factories\BahanBakuItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +27,7 @@ class BahanBakuItem extends Model
 
     protected $fillable = [
         'kegiatan_id', 'nama', 'satuan', 'qty', 'harga_satuan',
-        'tanggal_beli', 'no_struk', 'toko', 'keterangan', 'urutan',
+        'tanggal_beli', 'toko', 'keterangan', 'urutan',
         'created_by',
     ];
 
@@ -51,6 +53,14 @@ class BahanBakuItem extends Model
     {
         static::saving(function (self $item): void {
             $item->subtotal = (int) round((float) $item->qty * (float) $item->harga_satuan);
+        });
+
+        // Satuan dan toko yang belum ada di daftar acuan didaftarkan sendiri,
+        // supaya nilai yang diketik lewat pilihan "Lainnya" tersedia untuk
+        // input berikutnya. Lihat MasterDataOtomatis untuk alasannya.
+        static::saved(function (self $item): void {
+            MasterDataOtomatis::daftarkan(JenisMaster::Satuan, $item->satuan);
+            MasterDataOtomatis::daftarkan(JenisMaster::Toko, $item->toko);
         });
 
         $sync = function (self $item): void {

@@ -159,7 +159,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'subtotal', type: 'integer', example: 36250000),
         new OA\Property(property: 'subtotal_formatted', type: 'string', example: 'Rp36.250.000'),
         new OA\Property(property: 'tanggal_beli', type: 'string', format: 'date', nullable: true),
-        new OA\Property(property: 'no_struk', type: 'string', nullable: true, example: 'INV/BJ/1207'),
         new OA\Property(property: 'toko', type: 'string', nullable: true, example: 'TB Sumber Jaya'),
         new OA\Property(property: 'keterangan', type: 'string', nullable: true),
         new OA\Property(property: 'urutan', type: 'integer', example: 1),

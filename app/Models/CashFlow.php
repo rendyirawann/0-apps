@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\JenisKas;
 use App\Enums\KategoriKas;
+use App\Enums\MetodeBayar;
 use Database\Factories\CashFlowFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,8 +19,21 @@ class CashFlow extends Model
     /** @use HasFactory<CashFlowFactory> */
     use HasFactory, SoftDeletes;
 
+    /**
+     * Nilai bawaan untuk instans BARU.
+     *
+     * Kolomnya memang punya default di database, tetapi default itu baru
+     * berlaku saat baris ditulis -- objek hasil create() masih memegang null
+     * sampai dibaca ulang. Tanpa baris ini, resource yang memanggil
+     * $this->metode->label() pecah tepat pada respons 201.
+     */
+    protected $attributes = [
+        'metode' => 'kas',
+        'dibayar' => 0,
+    ];
+
     protected $fillable = [
-        'kegiatan_id', 'tanggal', 'jenis', 'kategori', 'nominal',
+        'kegiatan_id', 'tanggal', 'jenis', 'kategori', 'nominal', 'dibayar',
         'uraian', 'keterangan', 'metode', 'no_bukti', 'lampiran_path',
         'created_by',
     ];
@@ -30,7 +44,9 @@ class CashFlow extends Model
             'tanggal' => 'date',
             'jenis' => JenisKas::class,
             'kategori' => KategoriKas::class,
+            'metode' => MetodeBayar::class,
             'nominal' => 'integer',
+            'dibayar' => 'integer',
         ];
     }
 
@@ -65,6 +81,43 @@ class CashFlow extends Model
         return $this->jenis === JenisKas::Masuk
             ? (int) $this->nominal
             : -(int) $this->nominal;
+    }
+
+    // ------------------------------------------------------------------
+    // Pelunasan
+    // ------------------------------------------------------------------
+
+    /**
+     * Sisa yang belum dibayar.
+     *
+     * Tidak pernah negatif: `dibayar` yang melebihi nominal berarti salah
+     * input, dan menampilkan terhutang minus hanya membingungkan.
+     */
+    public function terhutang(): int
+    {
+        return max(0, (int) $this->nominal - (int) $this->dibayar);
+    }
+
+    /**
+     * Diturunkan, bukan disimpan.
+     *
+     * Kalau status ikut jadi kolom, cepat atau lambat akan ada baris bertanda
+     * "lunas" yang `dibayar`-nya masih nol. Dengan satu sumber angka, keadaan
+     * itu tidak mungkin terjadi.
+     */
+    public function sudahLunas(): bool
+    {
+        return $this->terhutang() === 0;
+    }
+
+    public function statusBayar(): string
+    {
+        return $this->sudahLunas() ? 'lunas' : 'belum';
+    }
+
+    public function statusBayarLabel(): string
+    {
+        return $this->sudahLunas() ? 'Lunas' : 'Belum Lunas';
     }
 
     // ------------------------------------------------------------------

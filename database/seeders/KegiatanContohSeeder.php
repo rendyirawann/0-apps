@@ -210,10 +210,12 @@ class KegiatanContohSeeder extends Seeder
      */
     private function seedBahanBaku(Kegiatan $kegiatan, ?int $userId, array $rows): void
     {
-        foreach ($rows as $i => [$nama, $satuan, $qty, $harga, $tanggal, $struk, $toko]) {
+        // Elemen ke-5 tiap baris dulunya nomor struk; kolomnya sudah dihapus,
+        // datanya diabaikan agar susunan baris contoh tidak perlu ditulis ulang.
+        foreach ($rows as $i => [$nama, $satuan, $qty, $harga, $tanggal, , $toko]) {
             // withoutEvents: recalculate() dipanggil sekali di akhir, bukan
             // setiap baris, agar seeding tidak menghitung ulang berkali-kali.
-            BahanBakuItem::withoutEvents(function () use ($kegiatan, $userId, $nama, $satuan, $qty, $harga, $tanggal, $struk, $toko, $i): void {
+            BahanBakuItem::withoutEvents(function () use ($kegiatan, $userId, $nama, $satuan, $qty, $harga, $tanggal, $toko, $i): void {
                 $kegiatan->bahanBakuItems()->create([
                     'nama' => $nama,
                     'satuan' => $satuan,
@@ -223,7 +225,6 @@ class KegiatanContohSeeder extends Seeder
                     // dimatikan di sini, dihitung manual dengan rumus yang sama.
                     'subtotal' => (int) round((float) $qty * (float) $harga),
                     'tanggal_beli' => Carbon::parse($tanggal),
-                    'no_struk' => $struk,
                     'toko' => $toko,
                     'urutan' => $i + 1,
                     'created_by' => $userId,

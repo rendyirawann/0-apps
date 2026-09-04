@@ -116,13 +116,34 @@ class Kegiatan extends Model
     }
 
     /** Total upah pekerja dari catatan kas. */
+    /**
+     * Upah yang sudah BENAR-BENAR dibayar.
+     *
+     * Dijumlahkan dari `dibayar`, bukan `nominal`. Upah yang dicatat sebagai
+     * hutang belum mengeluarkan uang, jadi belum boleh menaikkan Biaya
+     * Pelaksanaan Real -- kalau ikut dihitung, profit terlihat lebih kecil
+     * daripada keadaan sebenarnya di kas.
+     *
+     * Sisanya ada di totalUpahTerhutang().
+     */
     public function totalUpah(): int
     {
         return (int) round((float) $this->cashFlows()
             ->where('jenis', JenisKas::Keluar->value)
             ->whereIn('kategori', KategoriKas::pelaksanaanReal())
             ->toBase()
-            ->sum('nominal'));
+            ->sum('dibayar'));
+    }
+
+    /** Nilai upah yang sudah dicatat tetapi belum dibayar. */
+    public function totalUpahTerhutang(): int
+    {
+        return (int) round((float) $this->cashFlows()
+            ->where('jenis', JenisKas::Keluar->value)
+            ->whereIn('kategori', KategoriKas::pelaksanaanReal())
+            ->toBase()
+            ->selectRaw('COALESCE(SUM(GREATEST(nominal - dibayar, 0)), 0) AS sisa')
+            ->value('sisa'));
     }
 
     /**

@@ -27,7 +27,6 @@ class BahanBakuRequest extends FormRequest
             'harga_satuan' => [$wajib, 'numeric', 'min:0', 'max:999999999999'],
 
             'tanggal_beli' => ['nullable', 'date'],
-            'no_struk' => ['nullable', 'string', 'max:60'],
             'toko' => ['nullable', 'string', 'max:120'],
             'keterangan' => ['nullable', 'string', 'max:2000'],
             'urutan' => ['nullable', 'integer', 'min:0', 'max:99999'],
@@ -42,7 +41,6 @@ class BahanBakuRequest extends FormRequest
             'qty' => 'Jumlah',
             'harga_satuan' => 'Harga Satuan',
             'tanggal_beli' => 'Tanggal Beli',
-            'no_struk' => 'Nomor Struk',
             'toko' => 'Toko',
         ];
     }

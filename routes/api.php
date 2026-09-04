@@ -27,9 +27,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class)->name('api.health');
 
 // ---------------------------------------------------------------------
-// Publik (throttle ketat: endpoint ini menerima kredensial)
+// Publik. Inilah satu-satunya pintu masuk tanpa token, jadi batasnya paling
+// ketat di seluruh aplikasi: dihitung per kombinasi email + IP supaya orang
+// lain tidak bisa mengunci akun Anda hanya dengan salah memasukkan sandi
+// berulang kali. Rinciannya di RateLimitServiceProvider.
 // ---------------------------------------------------------------------
-Route::prefix('auth')->middleware('throttle:10,1')->group(function (): void {
+Route::prefix('auth')->middleware('throttle:login')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login'])->name('api.auth.login');
     Route::post('/biometric/login', [AuthController::class, 'biometricLogin'])->name('api.auth.biometric.login');
 });

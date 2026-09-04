@@ -74,7 +74,12 @@ class User extends Authenticatable
         return match ($this->role) {
             self::SUPERADMIN => 'Super Admin',
             self::PETUGAS => 'Petugas',
-            default => ucfirst($this->role),
+            // Dicast ke string lebih dulu: ucfirst(null) melempar TypeError di
+            // PHP 8, dan itu membuat /api/auth/me membalas 500 alih-alih data
+            // penggunanya. Kolomnya memang punya default, tetapi default itu
+            // baru berlaku saat baris ditulis -- objek hasil create() masih
+            // memegang null sampai dibaca ulang.
+            default => ucfirst((string) $this->role),
         };
     }
 

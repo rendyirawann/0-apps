@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\CatatAktivitas;
+use App\Http\Middleware\SecurityHeaders;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -26,6 +27,28 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+        |------------------------------------------------------------------
+        | Header keamanan pada SETIAP respons
+        |------------------------------------------------------------------
+        | Dipasang global, bukan per grup: halaman status, halaman galat,
+        | dokumentasi Swagger, dan seluruh jawaban API sama-sama perlu.
+        | Dipasang di sini pula -- bukan di nginx -- supaya tidak ada dua
+        | sumber yang bisa mengirim nilai berbeda untuk header yang sama.
+        */
+        $middleware->append(SecurityHeaders::class);
+
+        /*
+        |------------------------------------------------------------------
+        | Batas laju umum
+        |------------------------------------------------------------------
+        | Longgar untuk pemakaian wajar, tetapi memotong skrip yang menembak
+        | tanpa henti. Batas khusus untuk login jauh lebih ketat dan
+        | dipasang langsung di rutenya. Keduanya dijelaskan di
+        | RateLimitServiceProvider.
+        */
+        $middleware->appendToGroup('api', 'throttle:api');
+
         // Dipasang ke seluruh grup api agar setiap endpoint yang mengubah data
         // otomatis tercatat di jejak aktivitas -- termasuk endpoint yang dibuat
         // nanti, tanpa perlu diingat penulisnya.
@@ -171,11 +194,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return ApiResponse::error(
-                'Terlalu banyak permintaan. Silakan tunggu sebentar.',
+            $detik = (int) ($e->getHeaders()['Retry-After'] ?? 0);
+
+            $response = ApiResponse::error(
+                $detik > 0
+                    ? "Terlalu banyak percobaan. Coba lagi dalam {$detik} detik."
+                    : 'Terlalu banyak permintaan. Silakan tunggu sebentar.',
                 429,
                 code: 'TOO_MANY_REQUESTS',
             );
+
+            // Header bawaan pembatas laju (Retry-After, X-RateLimit-*) ikut
+            // dibawa. Tanpa ini aplikasi hanya bisa bilang "coba lagi nanti"
+            // tanpa tahu nanti itu kapan, dan pengguna menekan tombolnya
+            // berulang kali -- justru memperpanjang blokirnya sendiri.
+            $response->withHeaders($e->getHeaders());
+
+            return $response;
         });
 
         // Error tak terduga: sembunyikan detail saat APP_DEBUG=false.

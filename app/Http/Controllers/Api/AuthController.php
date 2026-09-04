@@ -70,11 +70,17 @@ class AuthController extends Controller
         $key = 'login:'.Str::lower((string) $request->input('email')).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+            $detik = RateLimiter::availableIn($key);
+
+            // Retry-After ikut dikirim, bukan hanya disebut di pesan: tanpanya
+            // aplikasi tidak punya angka untuk menghitung mundur, dan pengguna
+            // menekan tombolnya berulang kali -- yang justru memperpanjang
+            // blokirnya sendiri.
             return ApiResponse::error(
-                sprintf('Terlalu banyak percobaan login. Coba lagi dalam %d detik.', RateLimiter::availableIn($key)),
+                sprintf('Terlalu banyak percobaan login. Coba lagi dalam %d detik.', $detik),
                 429,
                 code: 'TOO_MANY_ATTEMPTS',
-            );
+            )->withHeaders(['Retry-After' => (string) $detik]);
         }
 
         $user = User::query()->where('email', $request->input('email'))->first();
@@ -174,11 +180,13 @@ class AuthController extends Controller
         $key = 'biometric:'.Str::lower((string) $request->input('email')).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+            $detik = RateLimiter::availableIn($key);
+
             return ApiResponse::error(
-                sprintf('Terlalu banyak percobaan. Coba lagi dalam %d detik.', RateLimiter::availableIn($key)),
+                sprintf('Terlalu banyak percobaan. Coba lagi dalam %d detik.', $detik),
                 429,
                 code: 'TOO_MANY_ATTEMPTS',
-            );
+            )->withHeaders(['Retry-After' => (string) $detik]);
         }
 
         $user = User::query()->where('email', $request->input('email'))->first();

@@ -72,6 +72,11 @@ upload_max_filesize = 12M
 post_max_size = 14M
 memory_limit = 512M
 max_execution_time = 120
+
+; Nama dan versi PHP tidak perlu diumumkan di setiap balasan. Aplikasi sudah
+; membuang header X-Powered-By, tetapi PHP menambahkannya di lapisan yang
+; lebih bawah -- hanya setelan ini yang benar-benar mematikannya.
+expose_php = Off
 INI
 
 # ------------------------------------------------------------------ 3. Redis
